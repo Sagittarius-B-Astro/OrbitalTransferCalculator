@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href='https://fonts.googleapis.com/css?family=Space Mono' rel='stylesheet'>
+    <title>Orbital Transfer Calculator</title>
+  </head>
+  <body>
+    <header class="top-container">
+      <div class=projectTitle>Orbital Transfer Calculator</div>
+    </header>
+    <div class="leftscreen">
+      <div class="transferType">
+        <label for="transferType">Transfer Type:</label>
+        <select id="transferType" name="transferType">
+          <option value="hohmann">Hohmann Transfer</option>
+          <option value="bielliptic">Bi-elliptic Hohmann Transfer</option>
+          <option value="commonApse">Common Apse Line Transfer</option>
+          <option value="apseRotate">Apse Line Rotation</option>
+          <option value="planeChange">Plane Change</option>
+        </select>
+        
+      </div>
+      <div class="parameters">
+        
+      </div>
+      <div class="infobox">
+          
+      </div>
+    </div>  
+    <div class="rightscreen">
+      <div class="desmosPlot">
+        <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=key"></script>
+        <div id="calculator" style="width: 1000px; height: 800px;"></div>
+        <script>
+            var elt = document.getElementById('calculator');
+            var calculator = Desmos.GraphingCalculator(elt);
+        </script>
+      </div>  
+    </div>
+  <script>
+  const transferSelect = document.getElementById("transferType");
+  const parametersDiv = document.querySelector(".parameters");
+
+  const parameterSets = {
+    hohmann: [
+      { id: "r1", label: "Initial Orbit Radius (km)" },
+      { id: "r2", label: "Final Orbit Radius (km)" }
+    ],
+    bielliptic: [
+      { id: "r1", label: "Initial Orbit Radius (km)" },
+      { id: "r2", label: "Final Orbit Radius (km)" },
+      { id: "rb", label: "Intermediate Orbit Radius (km)" }
+    ],
+    commonApse: [
+      { id: "r1", label: "Initial Orbit Radius (km)" },
+      { id: "r2", label: "Final Orbit Radius (km)" },
+      { id: "Δω", label: "Difference in Argument of Periapsis (deg)" }
+    ],
+    apseRotate: [
+      { id: "r", label: "Orbit Radius (km)" },
+      { id: "Δω", label: "Rotation Angle (deg)" }
+    ],
+    planeChange: [
+      { id: "r", label: "Orbit Radius (km)" },
+      { id: "Δi", label: "Inclination Change (deg)" }
+    ]
+  };
+
+  function updateParameters() {
+    const type = transferSelect.value;
+    parametersDiv.innerHTML = ""; // clear previous inputs
+
+    const params = parameterSets[type];
+    params.forEach(p => {
+      const label = document.createElement("label");
+      label.setAttribute("for", p.id);
+      label.textContent = p.label;
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.id = p.id;
+      input.name = p.id;
+      input.placeholder = p.label;
+
+      parametersDiv.appendChild(label);
+      parametersDiv.appendChild(document.createElement("br"));
+      parametersDiv.appendChild(input);
+      parametersDiv.appendChild(document.createElement("br"));
+      parametersDiv.appendChild(document.createElement("br"));
+    });
+  }
+
+  transferSelect.addEventListener("change", updateParameters);
+  window.addEventListener("DOMContentLoaded", updateParameters);
+</script>
+
+  </body>
+</html>
