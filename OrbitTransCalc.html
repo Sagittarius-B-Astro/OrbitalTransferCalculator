@@ -4,6 +4,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="OTCstyle.css">
     <link href='https://fonts.googleapis.com/css?family=Space Mono' rel='stylesheet'>
     <title>Orbital Transfer Calculator</title>
   </head>
@@ -12,7 +13,7 @@
       <div class=projectTitle>Orbital Transfer Calculator</div>
     </header>
     <div class="leftscreen">
-      <div class="transferType">
+      <div class="transfer">
         <label for="transferType">Transfer Type:</label>
         <select id="transferType" name="transferType">
           <option value="hohmann">Hohmann Transfer</option>
@@ -21,81 +22,127 @@
           <option value="apseRotate">Apse Line Rotation</option>
           <option value="planeChange">Plane Change</option>
         </select>
-        
       </div>
-      <div class="parameters">
-        
+      <div class="parametersCommon">
+        <label for="mass">Mass of Object (kg):</label>
+        <input type="number" id="mass" name="mass"><br>
+        <label for="object_radius">Radius of Object (km):</label>
+        <input type="number" id="object_radius" name="object_radius"><br>
       </div>
-      <div class="infobox">
-          
-      </div>
+      <div class="parametersDynamic"></div>
+      <button id="calculateBtn">Calculate Δv</button>
+      <div class="infobox" id="infobox"></div>
     </div>  
     <div class="rightscreen">
       <div class="desmosPlot">
         <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=key"></script>
         <div id="calculator" style="width: 1000px; height: 800px;"></div>
-        <script>
-            var elt = document.getElementById('calculator');
-            var calculator = Desmos.GraphingCalculator(elt);
-        </script>
       </div>  
     </div>
   <script>
-  const transferSelect = document.getElementById("transferType");
-  const parametersDiv = document.querySelector(".parameters");
+    var elt = document.getElementById('calculator');
+    var calculator = Desmos.GraphingCalculator(elt);
 
-  const parameterSets = {
-    hohmann: [
-      { id: "r1", label: "Initial Orbit Radius (km)" },
-      { id: "r2", label: "Final Orbit Radius (km)" }
-    ],
-    bielliptic: [
-      { id: "r1", label: "Initial Orbit Radius (km)" },
-      { id: "r2", label: "Final Orbit Radius (km)" },
-      { id: "rb", label: "Intermediate Orbit Radius (km)" }
-    ],
-    commonApse: [
-      { id: "r1", label: "Initial Orbit Radius (km)" },
-      { id: "r2", label: "Final Orbit Radius (km)" },
-      { id: "Δω", label: "Difference in Argument of Periapsis (deg)" }
-    ],
-    apseRotate: [
-      { id: "r", label: "Orbit Radius (km)" },
-      { id: "Δω", label: "Rotation Angle (deg)" }
-    ],
-    planeChange: [
-      { id: "r", label: "Orbit Radius (km)" },
-      { id: "Δi", label: "Inclination Change (deg)" }
-    ]
-  };
+    // Calls to transfer type dropdown, unique parameters dependent on type, and infobox for transfer
+    const transferTypeSelect = document.querySelector('#transferType');
+    const typeParamsDiv = document.querySelector('.parametersDynamic');
+    const infoBox = document.querySelector('#infobox');
 
-  function updateParameters() {
-    const type = transferSelect.value;
-    parametersDiv.innerHTML = ""; // clear previous inputs
+    // Dynamically changes parameters depending on transfer type
+    function updateTypeParams(type) {
+      if (type === "hohmann") {
+        typeParamsDiv.innerHTML = `
+          <h3>Hohmann Transfer Parameters</h3>
+          <label for="r1">Initial Orbit Radius (km):</label>
+          <input type="number" id="r1" name="r1"><br>
+          <label for="r2">Target Orbit Radius (km):</label>
+          <input type="number" id="r2" name="r2"><br>
+        `;
+      } else if (type === "bielliptic") {
+        typeParamsDiv.innerHTML = `
+          <h3>Bi-Elliptic Hohmann Transfer Parameters</h3>
+          <label for="r1">Initial Orbit Radius (km):</label>
+          <input type="number" id="r1" name="r1"><br>
+          <label for="r2">Target Orbit Radius (km):</label>
+          <input type="number" id="r2" name="r2"><br>
+          <label for="ri">Intermediate Orbit Apogee Radius (km):</label>
+          <input type="number" id="ri" name="ri"><br>
+        `;
+      } else if (type === "commonApse") {
+        typeParamsDiv.innerHTML = `
+          <h3>Elliptic Transfer on Common Apse Line Parameters</h3>
+          <label for="r1a">Initial Orbit Apoapsis Radius (km):</label>
+          <input type="number" id="r1a" name="r1a"><br>
+          <label for="r1p">Initial Orbit Periapsis Radius (km):</label>
+          <input type="number" id="r1p" name="r1p"><br>
+          <label for="r2a">Target Orbit Apoapsis Radius (km):</label>
+          <input type="number" id="r2a" name="r2a"><br>
+          <label for="r2p">Target Orbit Periapsis Radius (km):</label>
+          <input type="number" id="r2p" name="r2p"><br>
+          <label for="ta1">Initial True Anomaly (degrees):</label>
+          <input type="number" id="ta1" name="ta1"><br>
+          <label for="ta2">Target True Anomaly (degrees):</label>
+          <input type="number" id="ta2" name="ta2"><br>
+        `;
+      } else if (type === "apseRotate") {
+        typeParamsDiv.innerHTML = `
+          <h3>Elliptic Transfer with Rotated Apse Line Parameters</h3>
+          <label for="r1a">Initial Orbit Apoapsis Radius (km):</label>
+          <input type="number" id="r1a" name="r1a"><br>
+          <label for="r1p">Initial Orbit Periapsis Radius (km):</label>
+          <input type="number" id="r1p" name="r1p"><br>
+          <label for="r2a">Target Orbit Apoapsis Radius (km):</label>
+          <input type="number" id="r2a" name="r2a"><br>
+          <label for="r2p">Target Orbit Periapsis Radius (km):</label>
+          <input type="number" id="r2p" name="r2p"><br>
+          <label for="eta">Apse Line Rotation (degrees):</label>
+          <input type="number" id="eta" name="eta"><br>
+        `;
+      } else {
+        typeParamsDiv.innerHTML = ""; // Clear other cases for now
+      }
+    }
 
-    const params = parameterSets[type];
-    params.forEach(p => {
-      const label = document.createElement("label");
-      label.setAttribute("for", p.id);
-      label.textContent = p.label;
+    // Initializes and listens for changes in type of transfer
+    updateTypeParams(transferTypeSelect.value);
 
-      const input = document.createElement("input");
-      input.type = "number";
-      input.id = p.id;
-      input.name = p.id;
-      input.placeholder = p.label;
-
-      parametersDiv.appendChild(label);
-      parametersDiv.appendChild(document.createElement("br"));
-      parametersDiv.appendChild(input);
-      parametersDiv.appendChild(document.createElement("br"));
-      parametersDiv.appendChild(document.createElement("br"));
+    transferTypeSelect.addEventListener('change', (e) => {
+      updateTypeParams(e.target.value);
     });
-  }
 
-  transferSelect.addEventListener("change", updateParameters);
-  window.addEventListener("DOMContentLoaded", updateParameters);
-</script>
+    document.querySelector('#calculateBtn').addEventListener('click', () => {
+      const M = parseFloat(document.querySelector('#mass').value);
+      const rad = parseFloat(document.querySelector('#object_radius').value);
+      const transferType = transferTypeSelect.value;
+
+      // optional fields
+      const r1El = document.querySelector('#r1');
+      const r2El = document.querySelector('#r2');
+      const riEl = document.querySelector('#ri');
+      const r1aEl = document.querySelector('#r1a');
+      const r2aEl = document.querySelector('#r2a');
+      const r1pEl = document.querySelector('#r1p');
+      const r2pEl = document.querySelector('#r2p');
+      const ta1El = document.querySelector('#ta1');
+      const ta2El = document.querySelector('#ta2');
+      const etaEl = document.querySelector('#eta');
+
+      const r1 = r1El ? parseFloat(r1El.value) : null;
+      const r2 = r2El ? parseFloat(r2El.value) : null;
+      const ri = riEl ? parseFloat(riEl.value) : null;
+      const r1a = r1aEl ? parseFloat(r1aEl.value) : null;
+      const r2a = r2aEl ? parseFloat(r2aEl.value) : null;
+      const r1p = r1pEl ? parseFloat(r1pEl.value) : null;
+      const r2p = r2pEl ? parseFloat(r2pEl.value) : null;
+      const ta1 = ta1El ? parseFloat(ta1El.value) : null;
+      const ta2 = ta2El ? parseFloat(ta2El.value) : null;
+      const eta = etaEl ? parseFloat(etaEl.value) : null;
+
+      infoBox.innerHTML = `
+        <strong>Inputs:</strong>
+      `;
+    });
+  </script>
 
   </body>
 </html>
