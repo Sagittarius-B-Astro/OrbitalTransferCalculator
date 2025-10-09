@@ -1,0 +1,93 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Space Mono', monospace;
+  color: white;
+  overflow: hidden; 
+  background: linear-gradient(to bottom, #0a1f44, #1d4e89, #87cefa);
+  display: flex;
+  flex-direction: column;
+}
+
+.top-container {
+  height: 20vh; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2.2em;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+
+body > div {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+}
+
+.leftscreen {
+  width: 40%;
+  height: 80vh;
+  background-color: rgba(135, 206, 250, 0.15); 
+  border: 1.5px solid #5dade2;
+  border-radius: 10px;
+  padding: 20px;
+  margin-left: calc(50% - 40% - 200px); 
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.transfer {
+  flex: 0 0 15%;
+}
+
+.parametersCommon,
+.parametersDynamic {
+  flex: 0 0 50%;
+  overflow-y: auto;
+}
+
+button {
+  flex: 0 0 20%;
+  margin-top: 10px;
+  background-color: #1d4e89;
+  color: white;
+  border: 1px solid #87cefa;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background-color: #2a6ab0;
+}
+
+.infobox {
+  flex: 0 0 15%;
+  background-color: rgba(135, 206, 250, 0.2);
+  border-radius: 8px;
+  border: 1px solid #5dade2;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.rightscreen {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.desmosPlot {
+  width: 90%;
+  height: 90%;
+  border: 2px solid #5dade2;
+  border-radius: 15px;
+  overflow: hidden;
+  background-color: rgba(135, 206, 250, 0.15);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
