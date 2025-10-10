@@ -10,139 +10,307 @@
   </head>
   <body>
     <header class="top-container">
-      <div class=projectTitle>Orbital Transfer Calculator</div>
+      <h1>Orbital Transfer Calculator</h1>
     </header>
-    <div class="leftscreen">
-      <div class="transfer">
-        <label for="transferType">Transfer Type:</label>
-        <select id="transferType" name="transferType">
-          <option value="hohmann">Hohmann Transfer</option>
-          <option value="bielliptic">Bi-elliptic Hohmann Transfer</option>
-          <option value="commonApse">Common Apse Line Transfer</option>
-          <option value="apseRotate">Apse Line Rotation</option>
-          <option value="planeChange">Plane Change</option>
-        </select>
-      </div>
-      <div class="parametersCommon">
-        <label for="mass">Mass of Object (kg):</label>
-        <input type="number" id="mass" name="mass"><br>
-        <label for="object_radius">Radius of Object (km):</label>
-        <input type="number" id="object_radius" name="object_radius"><br>
-      </div>
-      <div class="parametersDynamic"></div>
-      <button id="calculateBtn">Calculate Δv</button>
-      <div class="infobox" id="infobox"></div>
-    </div>  
-    <div class="rightscreen">
-      <div class="desmosPlot">
-        <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=key"></script>
-        <div id="calculator" style="width: 1000px; height: 800px;"></div>
+    <div class="mainscreen">
+      <div class="leftscreen">
+        <div class="transfer">
+          <label for="transferType">
+            <h3>Transfer Type:</h3>
+          </label>
+          <select id="transferType" name="transferType">
+            <option value="hohmann">Hohmann Transfer</option>
+            <option value="bielliptic">Bi-elliptic Hohmann Transfer</option>
+            <option value="commonApse">Common Apse Line Transfer</option>
+            <option value="apseRotate">Apse Line Rotation</option>
+            <option value="planeChange">Plane Change</option>
+          </select>
+        </div>
+        <div class="parametersCommon">
+          <h3>Celestial Object Parameters</h3>
+          <label for="mass">Mass of Object (kg):</label>
+          <input type="number" id="mass" name="mass"><br>
+          <label for="object_radius">Radius of Object (km):</label>
+          <input type="number" id="object_radius" name="object_radius"><br>
+        </div>
+        <div class="parametersDynamic"></div>
+        <button id="calculateBtn">
+          <h4>Calculate Δv</h4>
+        </button>
+        <div class="infobox" id="infobox"></div>
       </div>  
+      <div class="rightscreen">
+        <div class="desmosPlot">
+          <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=4154938d5d4a4139bfb32b60db31eb2e"></script>
+          <div id="calculator"></div>
+        </div>  
+      </div>
     </div>
-  <script>
-    var elt = document.getElementById('calculator');
-    var calculator = Desmos.GraphingCalculator(elt);
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        var elt = document.getElementById('calculator');
+        var calculator = Desmos.Calculator3D(elt);
 
-    // Calls to transfer type dropdown, unique parameters dependent on type, and infobox for transfer
-    const transferTypeSelect = document.querySelector('#transferType');
-    const typeParamsDiv = document.querySelector('.parametersDynamic');
-    const infoBox = document.querySelector('#infobox');
+        const transferTypeSelect = document.querySelector('#transferType');
+        const typeParamsDiv = document.querySelector('.parametersDynamic');
+        const infoBox = document.querySelector('#infobox');
 
-    // Dynamically changes parameters depending on transfer type
-    function updateTypeParams(type) {
-      if (type === "hohmann") {
-        typeParamsDiv.innerHTML = `
-          <h3>Hohmann Transfer Parameters</h3>
-          <label for="r1">Initial Orbit Radius (km):</label>
-          <input type="number" id="r1" name="r1"><br>
-          <label for="r2">Target Orbit Radius (km):</label>
-          <input type="number" id="r2" name="r2"><br>
-        `;
-      } else if (type === "bielliptic") {
-        typeParamsDiv.innerHTML = `
-          <h3>Bi-Elliptic Hohmann Transfer Parameters</h3>
-          <label for="r1">Initial Orbit Radius (km):</label>
-          <input type="number" id="r1" name="r1"><br>
-          <label for="r2">Target Orbit Radius (km):</label>
-          <input type="number" id="r2" name="r2"><br>
-          <label for="ri">Intermediate Orbit Apogee Radius (km):</label>
-          <input type="number" id="ri" name="ri"><br>
-        `;
-      } else if (type === "commonApse") {
-        typeParamsDiv.innerHTML = `
-          <h3>Elliptic Transfer on Common Apse Line Parameters</h3>
-          <label for="r1a">Initial Orbit Apoapsis Radius (km):</label>
-          <input type="number" id="r1a" name="r1a"><br>
-          <label for="r1p">Initial Orbit Periapsis Radius (km):</label>
-          <input type="number" id="r1p" name="r1p"><br>
-          <label for="r2a">Target Orbit Apoapsis Radius (km):</label>
-          <input type="number" id="r2a" name="r2a"><br>
-          <label for="r2p">Target Orbit Periapsis Radius (km):</label>
-          <input type="number" id="r2p" name="r2p"><br>
-          <label for="ta1">Initial True Anomaly (degrees):</label>
-          <input type="number" id="ta1" name="ta1"><br>
-          <label for="ta2">Target True Anomaly (degrees):</label>
-          <input type="number" id="ta2" name="ta2"><br>
-        `;
-      } else if (type === "apseRotate") {
-        typeParamsDiv.innerHTML = `
-          <h3>Elliptic Transfer with Rotated Apse Line Parameters</h3>
-          <label for="r1a">Initial Orbit Apoapsis Radius (km):</label>
-          <input type="number" id="r1a" name="r1a"><br>
-          <label for="r1p">Initial Orbit Periapsis Radius (km):</label>
-          <input type="number" id="r1p" name="r1p"><br>
-          <label for="r2a">Target Orbit Apoapsis Radius (km):</label>
-          <input type="number" id="r2a" name="r2a"><br>
-          <label for="r2p">Target Orbit Periapsis Radius (km):</label>
-          <input type="number" id="r2p" name="r2p"><br>
-          <label for="eta">Apse Line Rotation (degrees):</label>
-          <input type="number" id="eta" name="eta"><br>
-        `;
-      } else {
-        typeParamsDiv.innerHTML = ""; // Clear other cases for now
-      }
-    }
+        function updateTypeParams(type) {
+          if (type === "hohmann") {
+            typeParamsDiv.innerHTML = `
+              <h3>Hohmann Transfer Parameters</h3>
+              <label for="r1">Initial Orbit Radius (km):</label>
+              <input type="number" id="r1" name="r1"><br>
+              <label for="r2">Target Orbit Radius (km):</label>
+              <input type="number" id="r2" name="r2"><br>
+            `;
+          } else if (type === "bielliptic") {
+            typeParamsDiv.innerHTML = `
+              <h3>Bi-Elliptic Hohmann Transfer Parameters</h3>
+              <label for="r1">Initial Orbit Radius (km):</label>
+              <input type="number" id="r1" name="r1"><br>
+              <label for="r2">Target Orbit Radius (km):</label>
+              <input type="number" id="r2" name="r2"><br>
+              <label for="ri">Intermediate Orbit Apogee Radius (km):</label>
+              <input type="number" id="ri" name="ri"><br>
+            `;
+          } else if (type === "commonApse") {
+            typeParamsDiv.innerHTML = `
+              <h3>Elliptic Transfer on Common Apse Line Parameters</h3>
+              <label for="r1a">Initial Orbit Apoapsis Radius (km):</label>
+              <input type="number" id="r1a" name="r1a"><br>
+              <label for="r1p">Initial Orbit Periapsis Radius (km):</label>
+              <input type="number" id="r1p" name="r1p"><br>
+              <label for="r2a">Target Orbit Apoapsis Radius (km):</label>
+              <input type="number" id="r2a" name="r2a"><br>
+              <label for="r2p">Target Orbit Periapsis Radius (km):</label>
+              <input type="number" id="r2p" name="r2p"><br>
+              <label for="ta1">Initial True Anomaly (degrees):</label>
+              <input type="number" id="ta1" name="ta1"><br>
+              <label for="ta2">Target True Anomaly (degrees):</label>
+              <input type="number" id="ta2" name="ta2"><br>
+            `;
+          } else if (type === "apseRotate") {
+            typeParamsDiv.innerHTML = `
+              <h3>Elliptic Transfer with Rotated Apse Line Parameters</h3>
+              <label for="r1a">Initial Orbit Apoapsis Radius (km):</label>
+              <input type="number" id="r1a" name="r1a"><br>
+              <label for="r1p">Initial Orbit Periapsis Radius (km):</label>
+              <input type="number" id="r1p" name="r1p"><br>
+              <label for="r2a">Target Orbit Apoapsis Radius (km):</label>
+              <input type="number" id="r2a" name="r2a"><br>
+              <label for="r2p">Target Orbit Periapsis Radius (km):</label>
+              <input type="number" id="r2p" name="r2p"><br>
+              <label for="eta">Apse Line Rotation (degrees):</label>
+              <input type="number" id="eta" name="eta"><br>
+            `;
+          } else {
+            typeParamsDiv.innerHTML = "";
+          }
+        }
 
-    // Initializes and listens for changes in type of transfer
-    updateTypeParams(transferTypeSelect.value);
+        // Initialize and listen for dropdown changes
+        updateTypeParams(transferTypeSelect.value);
+        transferTypeSelect.addEventListener('change', (e) => updateTypeParams(e.target.value));
+        
+        function computeCommonOrbitProperties(M, radius) {
+          const G = 6.674e-11;
+          const mu = G * M;
 
-    transferTypeSelect.addEventListener('change', (e) => {
-      updateTypeParams(e.target.value);
-    });
+          return { mu, radius };
+        }
 
-    document.querySelector('#calculateBtn').addEventListener('click', () => {
-      const M = parseFloat(document.querySelector('#mass').value);
-      const rad = parseFloat(document.querySelector('#object_radius').value);
-      const transferType = transferTypeSelect.value;
+        function computeHohmann(params, common) {
+          const { r1, r2 } = params;
+          const mu = common * 10 ** -9;
+          const a = (r1 + r2) / 2;
+          const ht = Math.sqrt(2 * mu * (r1 * r2) / (r1 + r2));
 
-      // optional fields
-      const r1El = document.querySelector('#r1');
-      const r2El = document.querySelector('#r2');
-      const riEl = document.querySelector('#ri');
-      const r1aEl = document.querySelector('#r1a');
-      const r2aEl = document.querySelector('#r2a');
-      const r1pEl = document.querySelector('#r1p');
-      const r2pEl = document.querySelector('#r2p');
-      const ta1El = document.querySelector('#ta1');
-      const ta2El = document.querySelector('#ta2');
-      const etaEl = document.querySelector('#eta');
+          const v1 = Math.sqrt(mu / r1);
+          const va = ht / r1;
+          const vb = ht / r2;
+          const v2 = Math.sqrt(mu / r2);
 
-      const r1 = r1El ? parseFloat(r1El.value) : null;
-      const r2 = r2El ? parseFloat(r2El.value) : null;
-      const ri = riEl ? parseFloat(riEl.value) : null;
-      const r1a = r1aEl ? parseFloat(r1aEl.value) : null;
-      const r2a = r2aEl ? parseFloat(r2aEl.value) : null;
-      const r1p = r1pEl ? parseFloat(r1pEl.value) : null;
-      const r2p = r2pEl ? parseFloat(r2pEl.value) : null;
-      const ta1 = ta1El ? parseFloat(ta1El.value) : null;
-      const ta2 = ta2El ? parseFloat(ta2El.value) : null;
-      const eta = etaEl ? parseFloat(etaEl.value) : null;
+          const deltaV1 = Math.abs(va - v1);
+          const deltaV2 = Math.abs(v2 - vb);
 
-      infoBox.innerHTML = `
-        <strong>Inputs:</strong>
-      `;
-    });
-  </script>
+          const totalDeltaV = deltaV1 + deltaV2;
+          const transferTime = Math.PI * Math.sqrt(a ** 3 / mu)
 
+          return { deltaV1, deltaV2, totalDeltaV, transferTime };
+        }
+
+        function computeBielliptic(params, common) {
+          const { r1, r2, ri } = params;
+          const mu = common * 10 ** -9;
+          const a1i = (r1 + ri) / 2;
+          const ai2 = (ri + r2) / 2;
+          const ht1i = Math.sqrt(2 * mu * (r1 * ri) / (r1 + ri));
+          const hti2 = Math.sqrt(2 * mu * (ri * r2) / (ri + r2));
+
+          const v1 = Math.sqrt(mu / r1);
+          const va1 = ht1i / r1;
+          const vb1 = ht1i / ri;
+          const vb2 = hti2 / ri;
+          const vc2 = hti2 / r2;
+          const v2 = Math.sqrt(mu / r2);
+
+          const deltaV1 = Math.abs(va1 - v1);
+          const deltaV2 = Math.abs(vb2 - vb1);
+          const deltaV3 = Math.abs(v2 - vc2);
+
+          const totalDeltaV = deltaV1 + deltaV2 + deltaV3;
+          const transferTime = Math.PI * (Math.sqrt(a1i ** 3 / mu) + Math.sqrt(ai2 ** 3 / mu))
+
+          return { deltaV1, deltaV2, deltaV3, totalDeltaV, transferTime};
+        }
+
+        function computeCommonApse(params, common) {
+          const { r1a, r1p, r2a, r2p, A1, A2 } = params;
+          const mu = common * 10 ** -9;
+          const TA1 = Math.PI * A1 / 180;
+          const TA2 = Math.PI * A2 / 180;
+          const a1 = (r1a + r1p) / 2;
+          const a2 = (r2a + r2p) / 2;
+          const e1 = (r1a - r1p) / (r1a + r1p);
+          const e2 = (r2a - r2p) / (r2a + r2p);
+          const p1 = a1 * (1 - e1 ** 2);
+          const p2 = a2 * (1 - e2 ** 2);
+          const rA = p1 / (1 + e1 * Math.cos(TA1));
+          const rB = p2 / (1 + e2 * Math.cos(TA2));
+
+          const et = (rB - rA) / (rA * Math.cos(TA1) - rB * Math.cos(TA2));
+          const pt = rA * rB * (Math.cos(TA1) - Math.cos(TA2)) / (rA * Math.cos(TA1) - rB * Math.cos(TA2));
+          const at = pt / (1 - et ** 2);
+
+          const h1 = Math.sqrt(mu * p1);
+          const ht = Math.sqrt(mu * pt);
+          const vp1 = h1 / rA;
+          const vpt = ht / rA;
+          const vr1 = mu / (h1 * e1 * Math.sin(TA1));
+          const vrt = mu / (ht * et * Math.sin(TA1));
+          const v1 = Math.sqrt(vp1 ** 2 + vr1 ** 2);
+          const vt = Math.sqrt(vpt ** 2 + vrt ** 2);
+          const phi1 = 180 * Math.atan2(vr1, vp1) / Math.PI;
+          const phit = 180 * Math.atan2(vrt, vpt) / Math.PI;
+
+          const totalDeltaV = Math.sqrt(v1 ** 2 + vt ** 2 - 2 * v1 * vt * Math.cos(phit - phi1));
+          const gamma = Math.atan2((vrt - vr1) / (vpt - vp1))
+          const transferTime = Math.PI * Math.sqrt(at ** 3 / mu)
+
+          return { totalDeltaV, gamma, transferTime};
+        }
+
+        function computeApseRotate(params, common) {
+          const { r1a, r1p, r2a, r2p, A } = params;
+          const mu = common * 10 ** -9;
+          const eta = Math.PI * A / 180;
+          const a1 = (r1a + r1p) / 2;
+          const a2 = (r2a + r2p) / 2;
+          const e1 = (r1a - r1p) / (r1a + r1p);
+          const e2 = (r2a - r2p) / (r2a + r2p);
+          const p1 = a1 * (1 - e1 ** 2);
+          const p2 = a2 * (1 - e2 ** 2);
+
+          const a = e1 * p2 - e2 * p1 * Math.cos(A);
+          const b = -e2 * p1* Math.sin(eta);
+          const c = p1 - p2;
+
+          const alpha = Math.atan2(b, a);
+          const RA1 = alpha - Math.acos(c / a * Math.cos(alpha)) % (2 * Math.PI)
+          const RA2 = (RA1 - eta) % (2 * Math.PI)
+          
+          const h1 = Math.sqrt(mu * p1);
+          const h2 = Math.sqrt(mu * p2);
+          const r = p1 / (1 + et * Math.cos(RA1))
+          const vp1 = h1 / r;
+          const vp2 = h2 / r;
+          const vr1 = mu / (h1 * e1 * Math.sin(RA1));
+          const vr2 = mu / (h2 * e2 * Math.sin(RA2));
+          const v1 = Math.sqrt(vp1 ** 2 + vr1 ** 2);
+          const v2 = Math.sqrt(vp2 ** 2 + vr2 ** 2);
+          const phi1 = 180 * Math.atan2(vr1, vp1) / Math.PI;
+          const phi2 = 180 * Math.atan2(vr2, vp2) / Math.PI;
+
+          const totalDeltaV = Math.sqrt(v1 ** 2 + v2 ** 2 - 2 * v1 * v2 * Math.cos(phi2 - phi1));
+          const gamma = Math.atan2((vr2 - vr1) / (vp2 - vp1))
+
+          return { totalDeltaV, gamma };
+        }
+        
+        document.querySelector('#calculateBtn').addEventListener('click', () => {
+          const M = parseFloat(document.querySelector('#mass').value);
+          const rad = parseFloat(document.querySelector('#object_radius').value);
+          const transferType = transferTypeSelect.value;
+
+          const common = computeCommonOrbitProperties(M, rad);
+
+          let result;
+          if (transferType === "hohmann") {
+            const params = {
+              r1: parseFloat(document.querySelector('#r1').value),
+              r2: parseFloat(document.querySelector('#r2').value),
+            };
+            result = computeHohmann(params, common.mu);
+          } else if (transferType === "bielliptic") {
+            const params = {
+              r1: parseFloat(document.querySelector('#r1').value),
+              r2: parseFloat(document.querySelector('#r2').value),
+              ri: parseFloat(document.querySelector('#ri').value),
+            };
+            result = computeBielliptic(params, common.mu);
+          } else if (transferType === "commonApse") {
+            const params = {
+              r1a: parseFloat(document.querySelector('#r1a').value),
+              r1p: parseFloat(document.querySelector('#r1p').value),
+              r2a: parseFloat(document.querySelector('#r2a').value),
+              r2p: parseFloat(document.querySelector('#r2p').value),
+              TA1: parseFloat(document.querySelector('#ta1').value),
+              TA2: parseFloat(document.querySelector('#ta2').value),
+            };
+            result = computeCommonApse(params, common.mu);
+          } else if (transferType === "apseRotate") {
+            const params = {
+              r1a: parseFloat(document.querySelector('#r1a').value),
+              r1p: parseFloat(document.querySelector('#r1p').value),
+              r2a: parseFloat(document.querySelector('#r2a').value),
+              r2p: parseFloat(document.querySelector('#r2p').value),
+              eta: parseFloat(document.querySelector('#eta').value),
+            };
+            result = computeApseRotate(params, common.mu);
+          }
+
+          if (result) {
+            let html = `<h3>Results:</h3>`;
+            if (result.totalDeltaV) html += `Δv (total): ${result.totalDeltaV.toFixed(3)} km/s<br>`;
+            if (result.deltaV1) html += `Δv₁: ${result.deltaV1.toFixed(3)} km/s<br>`;
+            if (result.deltaV2) html += `Δv₂: ${result.deltaV2.toFixed(3)} km/s<br>`;
+            if (result.deltaV3) html += `Δv₃: ${result.deltaV3.toFixed(3)} km/s<br>`;
+            if (result.gamma) html += `γ: ${(result.gamma * 180 / Math.PI).toFixed(3)}°<br>`;
+            if (result.transferTime) html += `Transfer Time: ${(result.transferTime / 3600).toFixed(3)} hours<br>`;
+
+            infoBox.innerHTML = html;
+          }
+          
+          calculator.setCamera({ center: { x: 0, y: 0, z: 0 }, zoom: 1 });
+
+          calculator.setExpression({ id: 'planet', latex: `x^2 + y^2 + z^2 = (${rad})^2`, color: '#88aaff' });
+          calculator.setExpression({ 
+            id: 'initial_orbit', 
+            expressionType: "parametric3d", 
+            latex: `x=(${params.r1})*cos(t),y=(${params.r1})*sin(t),z=0`, 
+            color: '#00ccff', 
+            parametricDomain: { min: "0", max: "2π" }
+          });
+          calculator.setExpression({ 
+            id: 'target_orbit', 
+            expressionType: "parametric3d", 
+            latex: `x=(${params.r2})*cos(t),y=(${params.r2})*sin(t),z=0`, 
+            color: '#ff6600', 
+            parametricDomain: { min: "0", max: "2π" }
+          });
+        });
+      });
+    </script>
   </body>
 </html>
