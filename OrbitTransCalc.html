@@ -41,7 +41,7 @@
       </div>  
       <div class="rightscreen">
         <div class="desmosPlot">
-          <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=4154938d5d4a4139bfb32b60db31eb2e"></script>
+          <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=key"></script>
           <div id="calculator"></div>
         </div>  
       </div>
@@ -187,15 +187,15 @@
           const ht = Math.sqrt(mu * pt);
           const vp1 = h1 / rA;
           const vpt = ht / rA;
-          const vr1 = mu / (h1 * e1 * Math.sin(TA1));
-          const vrt = mu / (ht * et * Math.sin(TA1));
+          const vr1 = mu / h1 * e1 * Math.sin(TA1);
+          const vrt = mu / ht * et * Math.sin(TA1);
           const v1 = Math.sqrt(vp1 ** 2 + vr1 ** 2);
           const vt = Math.sqrt(vpt ** 2 + vrt ** 2);
-          const phi1 = 180 * Math.atan2(vr1, vp1) / Math.PI;
-          const phit = 180 * Math.atan2(vrt, vpt) / Math.PI;
+          const phi1 = Math.atan2(vr1, vp1)
+          const phit = Math.atan2(vrt, vpt)
 
           const totalDeltaV = Math.sqrt(v1 ** 2 + vt ** 2 - 2 * v1 * vt * Math.cos(phit - phi1));
-          const gamma = Math.atan2((vrt - vr1) / (vpt - vp1))
+          const gamma = Math.atan2((vrt - vr1), (vpt - vp1));
           const transferTime = Math.PI * Math.sqrt(at ** 3 / mu)
 
           return { totalDeltaV, gamma, transferTime};
@@ -222,18 +222,18 @@
           
           const h1 = Math.sqrt(mu * p1);
           const h2 = Math.sqrt(mu * p2);
-          const r = p1 / (1 + et * Math.cos(RA1))
+          const r = p1 / (1 + eta * Math.cos(RA1))
           const vp1 = h1 / r;
           const vp2 = h2 / r;
-          const vr1 = mu / (h1 * e1 * Math.sin(RA1));
-          const vr2 = mu / (h2 * e2 * Math.sin(RA2));
+          const vr1 = mu / h1 * e1 * Math.sin(RA1);
+          const vr2 = mu / h2 * e2 * Math.sin(RA2);
           const v1 = Math.sqrt(vp1 ** 2 + vr1 ** 2);
           const v2 = Math.sqrt(vp2 ** 2 + vr2 ** 2);
-          const phi1 = 180 * Math.atan2(vr1, vp1) / Math.PI;
-          const phi2 = 180 * Math.atan2(vr2, vp2) / Math.PI;
+          const phi1 = Math.atan2(vr1, vp1);
+          const phi2 = Math.atan2(vr2, vp2);
 
           const totalDeltaV = Math.sqrt(v1 ** 2 + v2 ** 2 - 2 * v1 * v2 * Math.cos(phi2 - phi1));
-          const gamma = Math.atan2((vr2 - vr1) / (vp2 - vp1))
+          const gamma = Math.atan2((vr2 - vr1), (vp2 - vp1));
 
           return { totalDeltaV, gamma };
         }
@@ -265,8 +265,8 @@
               r1p: parseFloat(document.querySelector('#r1p').value),
               r2a: parseFloat(document.querySelector('#r2a').value),
               r2p: parseFloat(document.querySelector('#r2p').value),
-              TA1: parseFloat(document.querySelector('#ta1').value),
-              TA2: parseFloat(document.querySelector('#ta2').value),
+              A1: parseFloat(document.querySelector('#ta1').value),
+              A2: parseFloat(document.querySelector('#ta2').value),
             };
             result = computeCommonApse(params, common.mu);
           } else if (transferType === "apseRotate") {
@@ -275,7 +275,7 @@
               r1p: parseFloat(document.querySelector('#r1p').value),
               r2a: parseFloat(document.querySelector('#r2a').value),
               r2p: parseFloat(document.querySelector('#r2p').value),
-              eta: parseFloat(document.querySelector('#eta').value),
+              A: parseFloat(document.querySelector('#eta').value),
             };
             result = computeApseRotate(params, common.mu);
           }
@@ -292,8 +292,6 @@
             infoBox.innerHTML = html;
           }
           
-          calculator.setCamera({ center: { x: 0, y: 0, z: 0 }, zoom: 1 });
-
           calculator.setExpression({ id: 'planet', latex: `x^2 + y^2 + z^2 = (${rad})^2`, color: '#88aaff' });
           calculator.setExpression({ 
             id: 'initial_orbit', 
