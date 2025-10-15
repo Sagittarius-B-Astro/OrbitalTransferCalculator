@@ -41,7 +41,7 @@
       </div>  
       <div class="rightscreen">
         <div class="desmosPlot">
-          <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=key"></script>
+          <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=4154938d5d4a4139bfb32b60db31eb2e"></script>
           <div id="calculator"></div>
         </div>  
       </div>
@@ -49,7 +49,7 @@
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         var elt = document.getElementById('calculator');
-        var calculator = Desmos.Calculator3D(elt);
+        var calculator = Desmos.Calculator3D(elt, { expressionsCollapsed: true });
 
         const transferTypeSelect = document.querySelector('#transferType');
         const typeParamsDiv = document.querySelector('.parametersDynamic');
@@ -245,22 +245,24 @@
 
           const common = computeCommonOrbitProperties(M, rad);
 
+          let invalid;
           let result;
+          let params;
           if (transferType === "hohmann") {
-            const params = {
+            params = {
               r1: parseFloat(document.querySelector('#r1').value),
               r2: parseFloat(document.querySelector('#r2').value),
             };
             result = computeHohmann(params, common.mu);
           } else if (transferType === "bielliptic") {
-            const params = {
+            params = {
               r1: parseFloat(document.querySelector('#r1').value),
               r2: parseFloat(document.querySelector('#r2').value),
               ri: parseFloat(document.querySelector('#ri').value),
             };
             result = computeBielliptic(params, common.mu);
           } else if (transferType === "commonApse") {
-            const params = {
+            params = {
               r1a: parseFloat(document.querySelector('#r1a').value),
               r1p: parseFloat(document.querySelector('#r1p').value),
               r2a: parseFloat(document.querySelector('#r2a').value),
@@ -270,7 +272,7 @@
             };
             result = computeCommonApse(params, common.mu);
           } else if (transferType === "apseRotate") {
-            const params = {
+            params = {
               r1a: parseFloat(document.querySelector('#r1a').value),
               r1p: parseFloat(document.querySelector('#r1p').value),
               r2a: parseFloat(document.querySelector('#r2a').value),
@@ -278,6 +280,18 @@
               A: parseFloat(document.querySelector('#eta').value),
             };
             result = computeApseRotate(params, common.mu);
+          }
+          
+          for (const key in params) {
+            if (isNaN(params[key])) {
+              console.log(key)
+              invalid=1
+            }
+          }
+
+          if (isNaN(M) || isNaN(rad) || invalid) {
+            infoBox.innerHTML = "Parameter(s) missing! Please fill in missing values";
+            return;
           }
 
           if (result) {
@@ -293,20 +307,116 @@
           }
           
           calculator.setExpression({ id: 'planet', latex: `x^2 + y^2 + z^2 = (${rad})^2`, color: '#88aaff' });
-          calculator.setExpression({ 
-            id: 'initial_orbit', 
-            expressionType: "parametric3d", 
-            latex: `x=(${params.r1})*cos(t),y=(${params.r1})*sin(t),z=0`, 
-            color: '#00ccff', 
-            parametricDomain: { min: "0", max: "2π" }
-          });
-          calculator.setExpression({ 
-            id: 'target_orbit', 
-            expressionType: "parametric3d", 
-            latex: `x=(${params.r2})*cos(t),y=(${params.r2})*sin(t),z=0`, 
-            color: '#ff6600', 
-            parametricDomain: { min: "0", max: "2π" }
-          });
+
+          if (transferType === "hohmann"){
+            calculator.setMathBounds({
+              xmin: -1.1*params['r1'],
+              xmax: 1.1*params['r1'],
+              ymin: -1.1*params['r1'],
+              ymax: 1.1*params['r1'],
+              zmin: -1.1*params['r1'],
+              zmax: 1.1*params['r1']
+            });
+            calculator.setExpression({ id: 'r1', latex: `r_1=${params['r1']}` });
+            calculator.setExpression({ id: 'r2', latex: `r_2=${params['r2']}` });
+            calculator.setExpression({ id: 'a', latex: 'a=(r_1+r_2)/2' });
+            calculator.setExpression({ id: 'b', latex: 'b=\\sqrt{r_1 r_2}' });
+            calculator.setExpression({ id: 'e', latex: `e_c=(r_2-r_1)/(r_2+r_1)` });
+            calculator.setExpression({ 
+              id: 'initial_orbit', 
+              expressionType: "parametric3d", 
+              latex: '(r_1 \\cos(t),r_1 \\sin(t),0)', 
+              color: '#00ccff', 
+              parametricDomain: { min: "0", max: "2 \\pi" }
+            });
+            calculator.setExpression({ 
+              id: 'target_orbit', 
+              expressionType: "parametric3d", 
+              latex: '(r_2 \\cos(t),r_2 \\sin(t),0)', 
+              color: '#ff6600', 
+              parametricDomain: { min: "0", max: "2 \\pi" }
+            });
+            calculator.setExpression({ 
+              id: 'trajectory', 
+              expressionType: "parametric3d", 
+              latex: '(a(\\cos(t)-e_c),b\\sin(t),0)', 
+              parametricDomain: { min: "0", max: "\\pi"} 
+            });
+          } else if (transferType === "bielliptic"){
+            calculator.setMathBounds({
+              xmin: -1.1*params['ri'],
+              xmax: 1.1*params['ri'],
+              ymin: -1.1*params['ri'],
+              ymax: 1.1*params['ri'],
+              zmin: -1.1*params['ri'],
+              zmax: 1.1*params['ri']
+            });
+            calculator.setExpression({ id: 'r1', latex: `r_1=${params['r1']}` });
+            calculator.setExpression({ id: 'r2', latex: `r_2=${params['r2']}` });
+            calculator.setExpression({ id: 'ri', latex: `r_i=${params['ri']}` });
+            calculator.setExpression({ id: 'a1', latex: 'a_1=(r_1+r_i)/2' });
+            calculator.setExpression({ id: 'b1', latex: 'b_1=\\sqrt{r_1 r_i}' });
+            calculator.setExpression({ id: 'e1', latex: `e_1=(r_i-r_1)/(r_i+r_1)` });
+            calculator.setExpression({ id: 'a2', latex: 'a_2=(r_i+r_2)/2' });
+            calculator.setExpression({ id: 'b2', latex: 'b_2=\\sqrt{r_i r_2}' });
+            calculator.setExpression({ id: 'e2', latex: `e_2=(r_i-r_2)/(r_2+r_i)` });
+            calculator.setExpression({ 
+              id: 'initial_orbit', 
+              expressionType: "parametric3d", 
+              latex: '(r_1 \\cos(t),r_1 \\sin(t),0)',
+              color: '#00ccff', 
+              parametricDomain: { min: "0", max: "2 \\pi" }
+            });
+            calculator.setExpression({ 
+              id: 'target_orbit', 
+              expressionType: "parametric3d", 
+              latex: '(r_2 \\cos(t),r_2 \\sin(t),0)',
+              color: '#ff6600', 
+              parametricDomain: { min: "0", max: "2 \\pi" }
+            });
+            calculator.setExpression({ 
+              id: 'trajectory1', 
+              expressionType: "parametric3d", 
+              latex: '(a_1(\\cos(t)-e_1),b_1\\sin(t),0)', 
+              parametricDomain: { min: "0", max: "\\pi"} 
+            });
+            calculator.setExpression({ 
+              id: 'trajectory2', 
+              expressionType: "parametric3d", 
+              latex: '(a_2(\\cos(t)-e_2),b_2\\sin(t),0)', 
+              parametricDomain: { min: "\\pi", max: "2 \\pi"} 
+            });
+          } else if (transferType === "commonApse"){
+            calculator.setExpression({ 
+              id: 'initial_orbit', 
+              expressionType: "parametric3d", 
+              latex: 'x=(${params.r1})*cos(t),y=(${params.r1})*sin(t),z=0', 
+              color: '#00ccff', 
+              parametricDomain: { min: "0", max: "2π" }
+            });
+            calculator.setExpression({ 
+              id: 'target_orbit', 
+              expressionType: "parametric3d", 
+              latex: 'x=(${params.r2})*cos(t),y=(${params.r2})*sin(t),z=0', 
+              color: '#ff6600', 
+              parametricDomain: { min: "0", max: "2π" }
+            });
+          } else if (transferType === "apseRotate"){
+            calculator.setExpression({ 
+              id: 'initial_orbit', 
+              expressionType: "parametric3d", 
+              latex: 'x=(${params.r1})*cos(t),y=(${params.r1})*sin(t),z=0', 
+              color: '#00ccff', 
+              parametricDomain: { min: "0", max: "2π" }
+            });
+            calculator.setExpression({ 
+              id: 'target_orbit', 
+              expressionType: "parametric3d", 
+              latex: 'x=(${params.r2})*cos(t),y=(${params.r2})*sin(t),z=0', 
+              color: '#ff6600', 
+              parametricDomain: { min: "0", max: "2π" }
+            });
+          }
         });
       });
     </script>
