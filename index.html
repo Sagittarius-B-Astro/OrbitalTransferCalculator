@@ -237,6 +237,25 @@
 
           return { totalDeltaV, gamma };
         }
+
+        function computerPlaneChange(params, common) {
+          /*
+          Plan: 
+          const pRange = [p1:pk]; determine how to find appropriate range of p
+          const init_orbit = [r1a, r1p, i1, RAAN1, w1], final_orbit = [r2a, r2p, i2, RAAN2, w2]; where i is inclination, RAAN is right ascension of the ascending node, w is arguemnt of periapsis
+          const r1, r2; find r1 and r2 based on the information abou
+          const grid = loopOverOrbits(init_orbit, final_orbit);
+          
+          function minDeltaVTrajectory() {
+            var minP = float('inf');
+            for (const p in pRange) {
+              const f = 1-r2
+            }
+          }
+
+          
+          */
+        }
         
         document.querySelector('#calculateBtn').addEventListener('click', () => {
           const M = parseFloat(document.querySelector('#mass').value);
@@ -472,6 +491,15 @@
               latex: '(((a_2(\\cos(t)-e_2))\\cos(\\eta)-(b_2\\sin(t))\\sin(\\eta)),((a_2(\\cos(t)-e_2))\\sin(\\eta)+(b_2\\sin(t))\\cos(\\eta)),0)',
               color: '#ff6600', 
               parametricDomain: { min: "0", max: "2 \\pi" }
+            });
+          } else if (transferType === "planeChange"){
+            calculator.setMathBounds({
+              xmin: -1.1*r,
+              xmax: 1.1*r,
+              ymin: -1.1*r,
+              ymax: 1.1*r,
+              zmin: -1.1*r,
+              zmax: 1.1*r
             });
           }
         });
