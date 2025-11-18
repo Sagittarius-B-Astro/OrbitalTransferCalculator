@@ -1,5 +1,3 @@
-import "./orbitMath.js";
-
 document.addEventListener("DOMContentLoaded", () => {
   var elt = document.getElementById('calculator');
   var calculator = Desmos.Calculator3D(elt, { expressionsCollapsed: true });
