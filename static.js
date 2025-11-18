@@ -1,9 +1,11 @@
+let typeParamsDiv;
+
 document.addEventListener("DOMContentLoaded", () => {
   var elt = document.getElementById('calculator');
   var calculator = Desmos.Calculator3D(elt, { expressionsCollapsed: true });
 
   const transferTypeSelect = document.querySelector('#transferType');
-  const typeParamsDiv = document.querySelector('.parametersDynamic'); //might be issue
+  typeParamsDiv = document.querySelector('.parametersDynamic');
   const infoBox = document.querySelector('#infobox');
 
   // Initialize and listen for dropdown changes
