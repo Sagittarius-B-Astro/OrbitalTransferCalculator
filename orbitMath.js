@@ -126,8 +126,8 @@ function computeApseRotate(params, common) {
 function computerPlaneChange(params, common) {
     /*
     Plan: 
-    const pRange = [p1:pk]; determine how to find appropriate range of p
-    const init_orbit = [r1a, r1p, i1, RAAN1, w1], final_orbit = [r2a, r2p, i2, RAAN2, w2]; where i is inclination, RAAN is right ascension of the ascending node, w is arguemnt of periapsis
+    const pRange = [p1:pk]; determine how to find appropriate range of p, semi-latus rectum
+    const init_orbit = [r1a, r1p, i1, RAAN1, w1], final_orbit = [r2a, r2p, i2, RAAN2, w2]; where i is inclination, RAAN is right ascension of the ascending node, w is argument of periapsis
     const r1, r2; find r1 and r2 based on the information about the orbits above
     const grid = loopOverOrbits(init_orbit, final_orbit);
     const [point1, point2, deltaV] = gradDescent(grid);
@@ -137,19 +137,19 @@ function computerPlaneChange(params, common) {
     function minDeltaVTrajectory(r1, r2) {
         var minP = float('inf');
         for (const p in pRange) {
-        const f = 1 - r2 / p * (1 - cos(deltaTheta)), g = r1 * r2 / (sqrt(mu * p)) * sin(deltaTheta), TA1 = (r2 - f * r1) / g; 
-        // Determine the connection between the TA1 given and the r1 and how they can give us the vt
-        const deltaV = (v2 - vt) + (vt - v1)
-        minP = min(minP, deltaV);
+            const f = 1 - r2 / p * (1 - cos(deltaTheta)), g = r1 * r2 / (sqrt(mu * p)) * sin(deltaTheta), TA1 = (r2 - f * r1) / g; 
+            // Determine the connection between the TA1 given and the r1 and how they can give us the vt
+            const deltaV = (v2 - vt) + (vt - v1)
+            minP = min(minP, deltaV);
         }
     }
 
     function loopOverOrbits(orbit1, orbit2) {
         const grid = [[]];
         for (const point1 in orbit1) {
-        for (const point2 in orbit2) {
-            grid[point1, point2] = minDeltaVTrajectory(r1, r2);
-        }
+            for (const point2 in orbit2) {
+                grid[point1, point2] = minDeltaVTrajectory(r1, r2);
+            }
         }
         return grid;
     }

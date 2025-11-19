@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     calculator.setExpression({ id: 'planet', latex: `x^2 + y^2 + z^2 = (${rad})^2`, color: '#88aaff' });
-    transferExpressions(transferType);
+    transferExpressions(transferType, params);
 
   });
 });

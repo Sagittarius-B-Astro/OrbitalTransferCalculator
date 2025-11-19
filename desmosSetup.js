@@ -1,4 +1,4 @@
-function transferExpressions(transferType) {
+function transferExpressions(transferType, params) {
   if (transferType === "hohmann"){
     const r = Math.max(params['r1'], params['r2']);
     calculator.setMathBounds({
