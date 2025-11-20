@@ -127,22 +127,52 @@ function computerPlaneChange(params, common) {
     const { r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2 } = params;
     const mu = common * 10 ** -9;
 
-    const orbit1params = [r1a, r1p, i1, RAAN1, w1];
-    const orbit2params = [r2a, r2p, i2, RAAN2, w2];
+    const orbit1params = {r1a, r1p, i1, RAAN1, w1};
+    const orbit2params = {r2a, r2p, i2, RAAN2, w2};
     const grid = loopOverOrbits(orbit1params, orbit2params);
-    const [point1, point2, deltaV] = gradDescent(grid);
+    const {point1, point2, deltaV} = gradDescent(grid);
     plotTrajectory(point1, point2);
+
+    return deltaV;
 
     function loopOverOrbits(init, final) {
         const numOrbitSamples = 50;
         const TA_array // should be an array of numOrbitSample elements equally spacing out 360
 
         for (const TA1 in TA_array) {
+            const { r1, v1 } = PFtoECIframe(orbit1params, TA1);
             for (const TA2 in TA_array) {
-
+                const { r2, v2 } = PFtoECIframe(orbit2params, TA2);
+                for (const TOF in TOF_array) {
+                    
+                }
             }
         }
     }
+
+    function PFtoECIframe(params, TA) {
+        const {ra, rp, i, RAAN, w} = params;
+        const a = (ra + rp) / 2;
+        const e = (ra - rp) / (ra + rp);
+        const p = a * (1 - e ** 2);
+        const r = p / (1 + e * Math.cos(TA));
+
+        const rpf = [[r * Math.cos(TA)], [r * Math.sin(TA)], [0]];
+        const vpf = Math.sqrt(mu / p) * [[-Math.sin(TA)], [e + Math.cos(TA)], [0]];
+        const reci = Math.multiply(Rz(RAAN), Rx(i), Rz(w), rpf);
+        const veci = Math.multiply(Rz(RAAN), Rx(i), Rz(w), vpf);
+
+        function Rz(A) {
+            return rot = [[Math.cos(A), -Math.sin(A),0], [Math.sin(A), Math.cos(A),0], [0, 0, 1]];
+        }
+
+        function Rx(A) {
+            return rot = [[1,0,0], [0, Math.cos(A), -Math.sin(A)], [0, Math.sin(A), Math.cos(A)]];
+        }
+        
+        return { reci, veci }
+    }
+
     /*
     Plan: 
     const init_orbit = [r1a, r1p, i1, RAAN1, w1], final_orbit = [r2a, r2p, i2, RAAN2, w2]; where i is inclination, RAAN is right ascension of the ascending node, w is argument of periapsis
