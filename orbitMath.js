@@ -124,11 +124,28 @@ function computeApseRotate(params, common) {
 }
 
 function computerPlaneChange(params, common) {
+    const { r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2 } = params;
+    const mu = common * 10 ** -9;
+
+    const orbit1params = [r1a, r1p, i1, RAAN1, w1];
+    const orbit2params = [r2a, r2p, i2, RAAN2, w2];
+    const grid = loopOverOrbits(orbit1params, orbit2params);
+    const [point1, point2, deltaV] = gradDescent(grid);
+    plotTrajectory(point1, point2);
+
+    function loopOverOrbits(init, final) {
+        const numOrbitSamples = 50;
+        const TA_array // should be an array of numOrbitSample elements equally spacing out 360
+
+        for (const TA1 in TA_array) {
+            for (const TA2 in TA_array) {
+
+            }
+        }
+    }
     /*
     Plan: 
-    const pRange = [p1:pk]; determine how to find appropriate range of p, semi-latus rectum
     const init_orbit = [r1a, r1p, i1, RAAN1, w1], final_orbit = [r2a, r2p, i2, RAAN2, w2]; where i is inclination, RAAN is right ascension of the ascending node, w is argument of periapsis
-    const r1, r2; find r1 and r2 based on the information about the orbits above
     const grid = loopOverOrbits(init_orbit, final_orbit);
     const [point1, point2, deltaV] = gradDescent(grid);
     plotTrajectory(point1, point2);
