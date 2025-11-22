@@ -130,7 +130,8 @@ function computerPlaneChange(params, common) {
     const orbit1params = {r1a, r1p, i1, RAAN1, w1};
     const orbit2params = {r2a, r2p, i2, RAAN2, w2};
     const grid = loopOverOrbits(orbit1params, orbit2params);
-    const {point1, point2, deltaV} = gradDescent(grid);
+    const { coarse1, coarse2 } = min(grid); //should find min coordinates, not min deltaV
+    const { point1, point2, deltaV } = corasetoFine(coarse1, coarse2);
     plotTrajectory(point1, point2);
 
     return deltaV;
@@ -138,16 +139,17 @@ function computerPlaneChange(params, common) {
     function loopOverOrbits(init, final) {
         const numOrbitSamples = 50;
         const TA_array // should be an array of numOrbitSample elements equally spacing out 360
+        const minDeltaVgrid = [];
 
-        for (const TA1 in TA_array) {
+        for (const TA1 of TA_array) {
             const { r1, v1 } = PFtoECIframe(orbit1params, TA1);
-            for (const TA2 in TA_array) {
+            for (const TA2 of TA_array) {
                 const { r2, v2 } = PFtoECIframe(orbit2params, TA2);
-                for (const TOF in TOF_array) {
-                    
-                }
+                minDeltaVgrid[TA1][TA2] = minDeltaVTrajectory(r1, r2);
             }
         }
+
+        return minDeltaVgrid;
     }
 
     function PFtoECIframe(params, TA) {
@@ -173,45 +175,26 @@ function computerPlaneChange(params, common) {
         return { reci, veci }
     }
 
-    /*
-    Plan: 
-    const init_orbit = [r1a, r1p, i1, RAAN1, w1], final_orbit = [r2a, r2p, i2, RAAN2, w2]; where i is inclination, RAAN is right ascension of the ascending node, w is argument of periapsis
-    const grid = loopOverOrbits(init_orbit, final_orbit);
-    const [point1, point2, deltaV] = gradDescent(grid);
-    plotTrajectory(point1, point2);
-    console.log(deltaV);
-
     function minDeltaVTrajectory(r1, r2) {
         var minP = float('inf');
-        for (const p in pRange) {
-            const f = 1 - r2 / p * (1 - cos(deltaTheta)), g = r1 * r2 / (sqrt(mu * p)) * sin(deltaTheta), TA1 = (r2 - f * r1) / g; 
-            // Determine the connection between the TA1 given and the r1 and how they can give us the vt
-            const deltaV = (v2 - vt) + (vt - v1)
-            minP = min(minP, deltaV);
+        const revolutions = 1;
+        const TOF_range = findTOFrange(r1, r2);
+        const deltaV;
+        for (const TOF of TOF_range) {
+            const { v2t, vt1 } = lambertIzzoMethod(r1, r2, TOF, revolutions);
+            deltaV = min(deltaV, Math.abs(v2 - v2t) + Math.abs(vt1 - v1));
         }
+
+        return deltaV;
     }
 
-    function loopOverOrbits(orbit1, orbit2) {
-        const grid = [[]];
-        for (const point1 in orbit1) {
-            for (const point2 in orbit2) {
-                grid[point1, point2] = minDeltaVTrajectory(r1, r2);
-            }
-        }
-        return grid;
+    function plotTrajectory(TA1, TA2) {
+        // Placeholder, should be in desmosSetup.js instead
     }
 
-    function gradDescent (grid) {
-        // return minimum of the grid of delta V
-        return point1, point2, 
-    }
+    //findTOFrange()
+    //lambertIzzoMethod()
+    //brent1d()
+    //coarsetoFine()
 
-    Next Steps:
-    - implement gradient descent, 
-    - draw final traectory
-    - figure out how r, TA defines a trajectory
-    - define how to do total deltaV from initial to final orbit
-    - find connection between this and Lambert's method?
-
-    */
 }
