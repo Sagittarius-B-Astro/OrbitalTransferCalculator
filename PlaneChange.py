@@ -71,7 +71,8 @@ def PlaneChange():
 
     def findTOFrange()
     
-    def lambertIzzoMethod()
+    def lambertIzzoMethod(r1, r2):
+
     
     def Brent1d(a, b, func):
         tolerance = np.power(10, -5)
@@ -136,6 +137,7 @@ def PlaneChange():
             fxr = func(xr)
             if fxr >= func_array[0][1] and fxr < func_array[1][1]: 
                 func_array[2] = (xr, fxr)
+                steps += 1
                 continue
 
             # Expansion
@@ -143,10 +145,12 @@ def PlaneChange():
                 xe = x0 + gamma * (xr - x0)
                 fxe = func(xe)
                 if fxe < fxr: 
-                    func_array[2] = (xe, fxe))
+                    func_array[2] = (xe, fxe)
+                    steps += 1
                     continue
                 else: 
                     func_array[2] = (xr, fxr)
+                    steps += 1
                     continue
 
             # Contraction
@@ -155,6 +159,7 @@ def PlaneChange():
                 fxc = func(xc)
                 if fxc < fxr:
                     func_array[2] = (xc, fxc)
+                    steps += 1
                     continue
                 else: 
                     #Shrink
@@ -167,6 +172,7 @@ def PlaneChange():
                 fxc = func(xc)
                 if fxc < fx3:
                     func_array[2] = (xc, fxc)
+                    steps += 1 
                     continue
                 else: 
                     #Shrink
@@ -174,6 +180,9 @@ def PlaneChange():
                         xi = x1 + sigma * (xi - x1)
                         fxi = func(xi)
                         func_array[i] = (xi, fxi)
+            
+            steps += 1
+
         return func_array[0] # the minimum point and the corresponding value of the function
     
     return deltaV
