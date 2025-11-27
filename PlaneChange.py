@@ -72,6 +72,13 @@ def PlaneChange():
     def findTOFrange()
     
     def lambertIzzoMethod(r1, r2):
+        # The following are the steps for the Izzo method
+        # 1: Normalize geometry so that mu is 1, r's lie in R2, c = abs(r1-r2), s = (r1+r2+c)/2 and find theta
+        # 2: Define Izzo param y so that the Lambert geometry can be expressed smoothly where x = y^2 / (1+y^2)
+        # 3: TOF(y) = function of y, theta, r1, r2, s, c so that it's monotonic on each branch
+        # 4: Find a good guess that approximiates the inverse TOF mapping y0
+        # 5: Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
+        # 6: Once y is found, compute orbit using semimajor axis, f and g, and vt1 and v2t
 
     
     def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000):
@@ -90,7 +97,7 @@ def PlaneChange():
         steps = 0
 
         while steps < max_steps and np.abs(a-b) > tol:
-            fa, fb, fc, fd = func(a), func(b), func(c), func(d)
+            fd = func(d)
 
             if (fa != fc) and (fb != fc):
                 s = (a * fb * fc) / ((fa - fb) * (fa - fc)) + (b * fa * fc) / ((fb - fa) * (fb - fc)) + (c * fa * fb) / ((fc - fa) * (fc - fb))
@@ -103,18 +110,20 @@ def PlaneChange():
             else: mflag = False
 
             fs = func(s)
-            d, c = c, b
+            d, c, fc = c, b, fb
 
             if fa * fs < 0: b, fb = s, fs
             else: a, fa = s, fs 
 
-            if np.abs(fa) < np.abs(fb): a, b = b, a
+            if np.abs(fa) < np.abs(fb): 
+                a, b = b, a
+                fa, fb = fb, fa
 
             steps += 1
 
         return b, steps  
  
-    def NelderMead2d(simplex, func, tol = 1e-5, max_steps = 1000):
+    def NelderMead2d(simplex, func, xtol = 1e-4, ftol = 1e-4, max_steps = 1000):
         # The function should expect a numpy array representing the points 
 
         alpha = 1 # alpha > 1
@@ -125,22 +134,22 @@ def PlaneChange():
         func_array = [(x, func(x)) for x in simplex] # an element is this array is formatted as (nparray representing point, scalar representing minDeltaV)
         steps = 0
         
-        while steps < max_steps and np.std([func_array[i][1] for i in range(3)]) > tolerance:
+        while steps < max_steps and (np.std([func_array[i][1] for i in range(3)]) > ftol or np.std([func_array[i][0] for i in range(3)]) > xtol):
             # Order
             func_array = sorted(func_array, key=lambda item: item[1])
-            x1, x2, x3 = [func_array[i][0] for i in range(3)]
+            (x1, fx1), (x2, fx2), (x3, fx3) = func_array
             x0 = np.mean(np.array([x1, x2]), axis = 0) # Simpler to do (x1 + x2) / 2 but wanted it do be generalizable. To be fully generalizable it would be from 1 to n-1 node
 
             # Reflect
             xr = x0 + alpha * (x0 - x3)
             fxr = func(xr)
-            if fxr >= func_array[0][1] and fxr < func_array[1][1]: 
+            if fxr >= fx1 and fxr < fx2: 
                 func_array[2] = (xr, fxr)
                 steps += 1
                 continue
 
             # Expansion
-            if fxr < func_array[0][1]:
+            if fxr < fx1:
                 xe = x0 + gamma * (xr - x0)
                 fxe = func(xe)
                 if fxe < fxr: 
@@ -153,7 +162,7 @@ def PlaneChange():
                     continue
 
             # Contraction
-            if fxr < func_array[2][1]:
+            if fxr < fx3:
                 xc = x0 + rho * (xr - x0)
                 fxc = func(xc)
                 if fxc < fxr:
@@ -169,7 +178,7 @@ def PlaneChange():
             else:
                 xc = x0 + rho * (x3 - x0)
                 fxc = func(xc)
-                if fxc < func_array[2][1]:
+                if fxc < fx3:
                     func_array[2] = (xc, fxc)
                     steps += 1 
                     continue
@@ -181,7 +190,8 @@ def PlaneChange():
                         func_array[i] = (xi, fxi)
             
             steps += 1
-
+        
+        func_array = sorted(func_array, key=lambda item: item[1])
         return func_array[0] # the minimum point and the corresponding value of the function
     
     return deltaV
