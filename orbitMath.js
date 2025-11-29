@@ -131,7 +131,7 @@ function computerPlaneChange(params, common) {
     const orbit2params = {r2a, r2p, i2, RAAN2, w2};
     const grid = loopOverOrbits(orbit1params, orbit2params);
     const { coarse1, coarse2 } = min(grid); //should find min coordinates, not min deltaV
-    const { point1, point2, deltaV } = corasetoFine(coarse1, coarse2);
+    const { point1, point2, deltaV } = coarsetoFine(coarse1, coarse2);
     plotTrajectory(point1, point2);
 
     return deltaV;

@@ -1,6 +1,6 @@
 import numpy as np
 
-def PlaneChange():
+def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
     orbit1params = (r1a, r1p, i1, RAAN1, w1)
     orbit2params = (r2a, r2p, i2, RAAN2, w2)
     grid = loopOverOrbits(orbit1params, orbit2params)
@@ -47,13 +47,10 @@ def PlaneChange():
         deltaV = float('inf')
 
         for TOF in TOF_range:
-            v2t, vt1 = lambertIzzoMethod(r1, r2, TOF, revolutions)
+            v2t, vt1 = lambertIzzoMethod(r1, r2, TOF, revolutions, mu)
             deltaV = min(deltaV, Math.abs(v2 - v2t) + Math.abs(vt1 - v1))
 
         return deltaV
-
-    def plotTrajectory(TA1, TA2):
-        # Placeholder, should be in desmosSetup.js instead
 
     def minCoords(grid):
         minDeltaV = float('inf')
@@ -71,7 +68,7 @@ def PlaneChange():
 
     def findTOFrange()
     
-    def lambertIzzoMethod(r1, r2):
+    def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu):
         # The following are the steps for the Izzo method
         # 1: Normalize geometry so that mu is 1, r's lie in R2, c = abs(r1-r2), s = (r1+r2+c)/2 and find theta
         # 2: Define Izzo param y so that the Lambert geometry can be expressed smoothly where x = y^2 / (1+y^2)
@@ -80,7 +77,39 @@ def PlaneChange():
         # 5: Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
         # 6: Once y is found, compute orbit using semimajor axis, f and g, and vt1 and v2t
 
-    
+        cvec = r2vec - r1vec
+        c, r1, r2 = np.abs(cvec), np.abs(r1vec), np.abs(r2vec)
+        s = (c + r1 + r2) / 2
+
+        r1unit, r2unit = r1vec / r1, r2vec / r2
+        hunit = np.cross(r1unit, r2unit), Lambda = np.sqrt(1 - c / s)
+
+        if (r1vec[0] * r2vec[1] - r1vec[1] * r2vec[0]) < 0:
+            Lambda = -Lambda
+            vt1unit, v2tunit = np.cross(r1unit, hunit), np.cross(r2unit, r2unit)
+        else: vt1unit, v2tunit = np.cross(hunit, r1unit), np.cross(hunit, hunit)
+
+        T = np.sqrt(2 * mu / np.power(s, 3)) * TOF
+        xSols, ySols = findxy(Lambda, T)
+        gamma, rho, sigma = np.sqrt(mu * s / 2), (r1 - r2) / c, np.sqrt(1 - np.power(rho, 2)) 
+
+        for x, y in xSols, ySols:
+            Vr1, Vr2 = gamma * ((Lambda * y - x) - rho * (Lambda * y + x)) / r1, -gamma * ((Lambda * y - x) + rho * (Lambda * y + x)) / r2
+            Vt1, Vt2 = gamma * sigma * (y + Lambda * x) / r1, gamma * sigma * (y + Lambda * x) / r2
+            vt1vec, v2tvec = Vr1 * r1unit + Vt1 * vt1unit, Vr2 * r2unit + Vt2 * vt2unit
+
+    def findxy(Lambda, T):
+        assert np.abs(Lambda) < 1, "Magnitude of lambda must be less than 1"
+        assert T < 0, "T must be less than 0"
+
+        Mmax = np.floor(T / np.pi)
+        T00 = np.arccos(Lambda) + Lambda * np.sqrt(1 - np.power(Lambda, 2))
+
+        if (T < T00 + Mmax * np.pi) and (Mmax > 0):
+
+    def Halley1d()
+
+
     def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000):
         fa, fb = func(a), func(b)
 
