@@ -47,7 +47,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
         deltaV = float('inf')
 
         for TOF in TOF_range:
-            v2t, vt1 = lambertIzzoMethod(r1, r2, TOF, revolutions, mu)
+            vt1, v2t = lambertIzzoMethod(r1, r2, TOF, revolutions, mu) # Returns two arrays for vt1 and v2t
             deltaV = min(deltaV, Math.abs(v2 - v2t) + Math.abs(vt1 - v1))
 
         return deltaV
@@ -89,26 +89,53 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
             vt1unit, v2tunit = np.cross(r1unit, hunit), np.cross(r2unit, r2unit)
         else: vt1unit, v2tunit = np.cross(hunit, r1unit), np.cross(hunit, hunit)
 
-        T = np.sqrt(2 * mu / np.power(s, 3)) * TOF
+        T = np.sqrt(2 * mu / s ** 3) * TOF
         xSols, ySols = findxy(Lambda, T)
-        gamma, rho, sigma = np.sqrt(mu * s / 2), (r1 - r2) / c, np.sqrt(1 - np.power(rho, 2)) 
+        gamma, rho, sigma = np.sqrt(mu * s / 2), (r1 - r2) / c, np.sqrt(1 - rho ** 2) 
+
+        vt1, v2t = [], []
 
         for x, y in xSols, ySols:
             Vr1, Vr2 = gamma * ((Lambda * y - x) - rho * (Lambda * y + x)) / r1, -gamma * ((Lambda * y - x) + rho * (Lambda * y + x)) / r2
             Vt1, Vt2 = gamma * sigma * (y + Lambda * x) / r1, gamma * sigma * (y + Lambda * x) / r2
             vt1vec, v2tvec = Vr1 * r1unit + Vt1 * vt1unit, Vr2 * r2unit + Vt2 * vt2unit
+            vt1.append(vt1vec)
+            vt2.append(v2tvec)
+
+        return vt1, v2t
 
     def findxy(Lambda, T):
         assert np.abs(Lambda) < 1, "Magnitude of lambda must be less than 1"
         assert T < 0, "T must be less than 0"
 
         Mmax = np.floor(T / np.pi)
-        T00 = np.arccos(Lambda) + Lambda * np.sqrt(1 - np.power(Lambda, 2))
+        T00 = np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2)
 
         if (T < T00 + Mmax * np.pi) and (Mmax > 0):
+            Halley1d(0, ) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
+            if Tmin > T:
+                Mmax -= 1
 
-    def Halley1d()
+        T1 = 2 / 3 * (1 - Lambda ** 3)
 
+        if T >= T0: x0 = (T0 / T) ** (2 / 3) - 1
+        elif T < T1: x0 = 5 / 2 * T1 * (T1 - T) / (T * (1 - Lambda ** 5)) - 1
+        else: x0 = (T0 / T) ** np.log2(T1 / T0) - 1
+
+        x, y = Householder1d(x0, func)
+
+        while Mmax > 0:
+            x0l, x0r = (((Mmax + 1) * np.pi / (8 * T)) ** (2 / 3) - 1) / (((Mmax + 1) * np.pi / (8 * T)) ** (2 / 3) + 1), 
+                ((8 * T) / (Mmax * np.pi) ** (2 / 3) - 1) / ((8 * T) / (Mmax * np.pi) ** (2 / 3) + 1)
+            xr, yr = Householder1d(x0l, func)
+            xl, yl = Householder1d(x0r, func)
+            Mmax -= 1
+
+        return [(x, y), (xr, yr), (xl, yl)]
+
+    def Halley1d(x0, func, tol = 1e-5, max_steps = 10):
+
+    def Householder1d(x0, func, tol = 1e-5, max_steps = 10):
 
     def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000):
         fa, fb = func(a), func(b)
