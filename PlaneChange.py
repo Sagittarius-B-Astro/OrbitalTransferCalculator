@@ -78,7 +78,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
         # 6: Once y is found, compute orbit using semimajor axis, f and g, and vt1 and v2t
 
         cvec = r2vec - r1vec
-        c, r1, r2 = np.abs(cvec), np.abs(r1vec), np.abs(r2vec)
+        c, r1, r2 = np.linalg.norm(cvec), np.linalg.norm(r1vec), np.linalg.norm(r2vec)
         s = (c + r1 + r2) / 2
 
         r1unit, r2unit = r1vec / r1, r2vec / r2
