@@ -70,12 +70,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
     
     def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu):
         # The following are the steps for the Izzo method
-        # 1: Normalize geometry so that mu is 1, r's lie in R2, c = abs(r1-r2), s = (r1+r2+c)/2 and find theta
-        # 2: Define Izzo param y so that the Lambert geometry can be expressed smoothly where x = y^2 / (1+y^2)
-        # 3: TOF(y) = function of y, theta, r1, r2, s, c so that it's monotonic on each branch
-        # 4: Find a good guess that approximiates the inverse TOF mapping y0
-        # 5: Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
-        # 6: Once y is found, compute orbit using semimajor axis, f and g, and vt1 and v2t
+        # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
 
         cvec = r2vec - r1vec
         c, r1, r2 = np.linalg.norm(cvec), np.linalg.norm(r1vec), np.linalg.norm(r2vec)
@@ -251,3 +246,4 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
         return func_array[0] # the minimum point and the corresponding value of the function
     
     return deltaV
+
