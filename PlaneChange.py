@@ -131,7 +131,10 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
     def Halley1d(x0, func, tol = 1e-5, max_steps = 10):
 
     def Householder1d(x0, func, tol = 1e-5, max_steps = 10):
+        # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
 
+    def GradientDescent2d():
+    
     def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000):
         fa, fb = func(a), func(b)
 
@@ -246,4 +249,5 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
         return func_array[0] # the minimum point and the corresponding value of the function
     
     return deltaV
+
 
