@@ -81,8 +81,8 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
 
         if (r1vec[0] * r2vec[1] - r1vec[1] * r2vec[0]) < 0:
             Lambda = -Lambda
-            vt1unit, v2tunit = np.cross(r1unit, hunit), np.cross(r2unit, r2unit)
-        else: vt1unit, v2tunit = np.cross(hunit, r1unit), np.cross(hunit, hunit)
+            vt1unit, v2tunit = np.cross(r1unit, hunit), np.cross(r2unit, hunit)
+        else: vt1unit, v2tunit = np.cross(hunit, r1unit), np.cross(hunit, r2unit)
 
         T = np.sqrt(2 * mu / s ** 3) * TOF
         xSols, ySols = findxy(Lambda, T)
@@ -133,8 +133,6 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
     def Householder1d(x0, func, tol = 1e-5, max_steps = 10):
         # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
 
-    def GradientDescent2d():
-    
     def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000):
         fa, fb = func(a), func(b)
 
@@ -247,7 +245,10 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
         
         func_array = sorted(func_array, key=lambda item: item[1])
         return func_array[0] # the minimum point and the corresponding value of the function
-    
+
+    def GradientDescent2d(): #Probably not effective, but worth implementing
+        
     return deltaV
+
 
 
