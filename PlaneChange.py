@@ -129,7 +129,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
         return [(x, y), (xr, yr), (xl, yl)]
 
     def Halley1d(x0, func, tol = 1e-5, max_steps = 10):
-        # Use Householder iteration of order 2
+        # Use Householder iteration of order 2 (y_(n+1)) = y_n - (2f*f') / (2f'^2 - f*f'')
 
     def Householder1d(x0, func, tol = 1e-5, max_steps = 10):
         # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
