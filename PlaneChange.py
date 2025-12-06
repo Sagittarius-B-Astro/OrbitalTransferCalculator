@@ -243,10 +243,3 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
         
         func_array = sorted(func_array, key=lambda item: item[1])
         return func_array[0] # the minimum point and the corresponding value of the function
-
-    def GradientDescent2d(): #Probably not effective, but worth implementing
-        
-    return deltaV
-
-
-
