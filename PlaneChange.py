@@ -69,9 +69,6 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu):
     def findTOFrange()
     
     def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu):
-        # The following are the steps for the Izzo method
-        # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
-
         cvec = r2vec - r1vec
         c, r1, r2 = np.linalg.norm(cvec), np.linalg.norm(r1vec), np.linalg.norm(r2vec)
         s = (c + r1 + r2) / 2
