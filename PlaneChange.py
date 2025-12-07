@@ -1,6 +1,6 @@
 import numpy as np
 
-def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu):
+def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # Requires radii in m, not km!
     TOF_range = findTOFrange(Mmax, (r1a + r1p)/2, (r2a + r2p)/2) # TOF range will be dependent on semi major axes
     orbit1params = (r1a, r1p, i1, RAAN1, w1)
     orbit2params = (r2a, r2p, i2, RAAN2, w2)
@@ -12,12 +12,13 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu):
 
     return ans
 
-def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range up to a given Mmax
+def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range up to a given Mmax. The first element is for M = 0, second is for M > 0
     TOFs = [(0, 0)] * 2
     TOrbitSmall, TOrbitBig = 2 * np.pi * np.sqrt(a1 ** 3 / mu), 2 * np.pi * np.sqrt(a2 ** 3 / mu)
+    TOFsamples = 9 # Used for coarse sampling, may give user the option later
     
-    TOFs[0] = (1e-5, TOrbitBig)
-    TOFs[1] = (M * TOrbitSmall, (M + 1) * TOrbitBig)
+    TOFs[0] = np.linspace(1e-5, TOrbitBig, TOFsamples)
+    TOFs[1] = np.linspace(M * TOrbitSmall, (M + 1) * TOrbitBig, TOFsamples)
 
     return TOFs
 
@@ -57,8 +58,10 @@ def PFtoECIframe(params, TA): # Converts from PF frame to ECI frame
 def minDeltaVTrajectory(r1, r2, TOF_range, Mmax, mu): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
     deltaV = float('inf')
 
-    for TOF in TOF_range:
-        for M in range(Mmax + 1):
+    for M in range(0, Mmax + 1):
+        if M == 0: TOFs = TOF_range[0]
+        else: TOFs = TOF_range[1]
+        for TOF in TOFs:
             vt1, v2t = lambertIzzoMethod(r1, r2, TOF, M, mu) # Returns two arrays for vt1 and v2t
             deltaV = min(deltaV, Math.abs(v2 - v2t) + Math.abs(vt1 - v1))
 
@@ -78,7 +81,7 @@ def minCoords(grid): # Finds the location of the min delta V trajectory in the 3
 
     return minDVCoords
 
-def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu):
+def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for solving Lambert's Problem, returns velocities instead of xs, ys
     cvec = r2vec - r1vec
     c, r1, r2 = np.linalg.norm(cvec), np.linalg.norm(r1vec), np.linalg.norm(r2vec)
     s = (c + r1 + r2) / 2
@@ -91,13 +94,13 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu):
         vt1unit, v2tunit = np.cross(r1unit, hunit), np.cross(r2unit, hunit)
     else: vt1unit, v2tunit = np.cross(hunit, r1unit), np.cross(hunit, r2unit)
 
-    T = np.sqrt(2 * mu / s ** 3) * TOF
+    T = np.sqrt(2 * mu / s ** 3) * TOF # Seconds to dimensionless time
     xSols, ySols = findxy(Lambda, T)
     gamma, rho, sigma = np.sqrt(mu * s / 2), (r1 - r2) / c, np.sqrt(1 - rho ** 2) 
 
     vt1, v2t = [], []
 
-    for x, y in xSols, ySols:
+    for x, y in xSols, ySols: # Gooding's method of converting x, y to velocities
         Vr1, Vr2 = gamma * ((Lambda * y - x) - rho * (Lambda * y + x)) / r1, -gamma * ((Lambda * y - x) + rho * (Lambda * y + x)) / r2
         Vt1, Vt2 = gamma * sigma * (y + Lambda * x) / r1, gamma * sigma * (y + Lambda * x) / r2
         vt1vec, v2tvec = Vr1 * r1unit + Vt1 * vt1unit, Vr2 * r2unit + Vt2 * vt2unit
@@ -106,7 +109,7 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu):
 
     return vt1, v2t
 
-def findxy(Lambda, T):
+def findxy(Lambda, T): # Helper function for LambertIzzo solver
     assert np.abs(Lambda) < 1, "Magnitude of lambda must be less than 1"
     assert T < 0, "T must be less than 0"
 
@@ -141,7 +144,7 @@ def Halley1d(x0, func, tol = 1e-5, max_steps = 10):
 def Householder1d(x0, func, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
 
-def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000):
+def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000): # Brent's bracketing method
     fa, fb = func(a), func(b)
 
     if fa * fb > 0: return "Interval not bracketed properly"
@@ -183,7 +186,7 @@ def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000):
 
     return b, steps  
 
-def NelderMead2d(simplex, func, xtol = 1e-4, ftol = 1e-4, max_steps = 1000):
+def NelderMead2d(simplex, func, xtol = 1e-4, ftol = 1e-4, max_steps = 1000): # Nelder-Mead local optimization
     # The function should expect a numpy array representing the points 
 
     alpha = 1 # alpha > 1
