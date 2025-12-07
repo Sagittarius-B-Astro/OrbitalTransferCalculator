@@ -1,18 +1,27 @@
 import numpy as np
 
-def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, mu, Mmax):
+def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu):
+    TOF_range = findTOFrange(Mmax, (r1a + r1p)/2, (r2a + r2p)/2) # TOF range will be dependent on semi major axes
     orbit1params = (r1a, r1p, i1, RAAN1, w1)
     orbit2params = (r2a, r2p, i2, RAAN2, w2)
-    TOFs = findTOFrange(Mmax, (r1a + r1p)/2, (r2a + r2p)/2) # TOF range will be dependent on semi major axes
 
-    grid = loopOverOrbits(orbit1params, orbit2params)
-    coarse1, coarse2 = minCoords(grid)
+    grid = loopOverOrbits(orbit1params, orbit2params, TOF_range, Mmax, mu)
+    coarse1, coarse2 = minCoords(grid) # Rough estimate of the minimum delta V point
     point1, point2, deltaV = NelderMead2d(coarse1, coarse2)
-    plotTrajectory(point1, point2) #Placeholder
+    plotTrajectory(point1, point2) # Placeholder
 
     return ans
 
-def loopOverOrbits(init, final): # Creates a grid of n = numOrbitSamples uniformly sampled minDeltaV points for every (TA1, TA2) point
+def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range up to a given Mmax
+    TOFs = [(0, 0)] * 2
+    TOrbitSmall, TOrbitBig = 2 * np.pi * np.sqrt(a1 ** 3 / mu), 2 * np.pi * np.sqrt(a2 ** 3 / mu)
+    
+    TOFs[0] = (1e-5, TOrbitBig)
+    TOFs[1] = (M * TOrbitSmall, (M + 1) * TOrbitBig)
+
+    return TOFs
+
+def loopOverOrbits(init, final, TOF_range, Mmax, mu): # Creates a grid of n = numOrbitSamples uniformly sampled minDeltaV points for every (TA1, TA2) point
     numOrbitSamples = 50
     TA_array = np.linspace(0, 360, numOrbitSamples)
     minDeltaVgrid = [[0] * n for _ in range(n)]
@@ -21,7 +30,7 @@ def loopOverOrbits(init, final): # Creates a grid of n = numOrbitSamples uniform
         r1, v1 = PFtoECIframe(orbit1params, TA1)
         for TA2 in TA_array:
             r2, v2 = PFtoECIframe(orbit2params, TA2)
-            minDeltaVgrid[TA1][TA2] = minDeltaVTrajectory(r1, r2)
+            minDeltaVgrid[TA1][TA2] = minDeltaVTrajectory(r1, r2, TOF_range, Mmax, mu)
 
     return minDeltaVgrid
 
@@ -45,18 +54,17 @@ def PFtoECIframe(params, TA): # Converts from PF frame to ECI frame
     
     return [reci, veci] 
 
-def minDeltaVTrajectory(r1, r2, M): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
-    revolutions = 1
-    TOF_range = findTOFrange(M)
+def minDeltaVTrajectory(r1, r2, TOF_range, Mmax, mu): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
     deltaV = float('inf')
 
     for TOF in TOF_range:
-        vt1, v2t = lambertIzzoMethod(r1, r2, TOF, revolutions, mu) # Returns two arrays for vt1 and v2t
-        deltaV = min(deltaV, Math.abs(v2 - v2t) + Math.abs(vt1 - v1))
+        for M in range(Mmax + 1):
+            vt1, v2t = lambertIzzoMethod(r1, r2, TOF, M, mu) # Returns two arrays for vt1 and v2t
+            deltaV = min(deltaV, Math.abs(v2 - v2t) + Math.abs(vt1 - v1))
 
     return deltaV
 
-def minCoords(grid):
+def minCoords(grid): # Finds the location of the min delta V trajectory in the 3d plot created by loopOverOrbits
     minDeltaV = float('inf')
     minDVCoords = (0, 0)
     numOrbitSamples = len(grid)
@@ -69,15 +77,6 @@ def minCoords(grid):
                 minDVCoords = (coord1, coord2)
 
     return minDVCoords
-
-def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range up to a given Mmax
-    TOFs = [(0, 0)]*2
-    T_orb_big = 2 * np.pi * np.sqrt(a2^3/mu)
-
-    for M in range(Mmax):
-        if M == 0:
-            TOFs[0] = (1e-5,)
-
 
 def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu):
     cvec = r2vec - r1vec
