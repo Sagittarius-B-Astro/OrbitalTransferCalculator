@@ -5,6 +5,9 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
     # How do I choose an appropriate time range to sample and run Lambert problems on? Izzo's algorithm uses the TOF
     # to calculate the max revolutions (Mmax), and it feels questionable to use Mmax to get the range of TOFs. 
 
+    # Upon reflection, thsi seems alright, but the following two distinctions should be made: 1) the Mmax given by the user is 
+    # not the same as Mmax in findxy, and 2) I should verify that the Mmax calculated in findxy should never exceed the user input.
+
     orbit1params = (r1a, r1p, i1, RAAN1, w1)
     orbit2params = (r2a, r2p, i2, RAAN2, w2)
 
@@ -21,7 +24,7 @@ def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range up to a given Mmax.
     TOFsamples = 9 # Used for coarse sampling, may give user the option later
     
     TOFs[0] = np.linspace(1e-5, TOrbitBig, TOFsamples)
-    TOFs[1] = np.linspace(M * TOrbitSmall, (M + 1) * TOrbitBig, TOFsamples)
+    TOFs[1] = np.linspace(Mmax * TOrbitSmall, (Mmax + 1) * TOrbitBig, TOFsamples)
 
     return TOFs
 
@@ -117,14 +120,16 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
     return vt1, v2t
 
     def findxy(Lambda, T): # Helper function for LambertIzzo solver
-        assert np.abs(Lambda) < 1, "Magnitude of lambda must be less than 1"
-        assert T < 0, "T must be less than 0"
+        assert np.abs(Lambda) < 1 # Magnitude of lambda must be less than 1
+        assert T > 0 # T must be more than 0. There was a typo in the paper
 
         Mmax = np.floor(T / np.pi)
         T00 = np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2)
 
         if (T < T00 + Mmax * np.pi) and (Mmax > 0):
             Halley1d(0, ) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
+            # Note: Final steps are to calculate Tmin(Mmax) by taking the Halley's method for dT/dx = 0. This actaully makes sense since Householder
+            # for dT/dx would require the fourth derivative, which is not worth calculating. 
             if Tmin > T:
                 Mmax -= 1
 
