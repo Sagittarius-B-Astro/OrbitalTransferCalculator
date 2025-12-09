@@ -2,6 +2,9 @@ import numpy as np
 
 def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # Requires radii in m, not km!
     TOF_range = findTOFrange(Mmax, (r1a + r1p)/2, (r2a + r2p)/2) # TOF range will be dependent on semi major axes
+    # How do I choose an appropriate time range to sample and run Lambert problems on? Izzo's algorithm uses the TOF
+    # to calculate the max revolutions (Mmax), and it feels questionable to use Mmax to get the range of TOFs. 
+
     orbit1params = (r1a, r1p, i1, RAAN1, w1)
     orbit2params = (r2a, r2p, i2, RAAN2, w2)
 
@@ -59,6 +62,10 @@ def minDeltaVTrajectory(r1, r2, TOF_range, Mmax, mu): # Determines the minimum d
     deltaV = float('inf')
 
     for M in range(0, Mmax + 1):
+        # The following set of if statements are because I created the TOF ranges to be dependent on current M; when m = 0
+        # the TOF is essentially 0 to outer orbit period, and when m > 0 the TOF is from M * inner orbit period to 
+        # (M + 1) * outer orbit period. 
+
         if M == 0: TOFs = TOF_range[0]
         else: TOFs = TOF_range[1]
         for TOF in TOFs:
@@ -106,37 +113,37 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
         vt1vec, v2tvec = Vr1 * r1unit + Vt1 * vt1unit, Vr2 * r2unit + Vt2 * vt2unit
         vt1.append(vt1vec)
         vt2.append(v2tvec)
-
+    
     return vt1, v2t
 
-def findxy(Lambda, T): # Helper function for LambertIzzo solver
-    assert np.abs(Lambda) < 1, "Magnitude of lambda must be less than 1"
-    assert T < 0, "T must be less than 0"
+    def findxy(Lambda, T): # Helper function for LambertIzzo solver
+        assert np.abs(Lambda) < 1, "Magnitude of lambda must be less than 1"
+        assert T < 0, "T must be less than 0"
 
-    Mmax = np.floor(T / np.pi)
-    T00 = np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2)
+        Mmax = np.floor(T / np.pi)
+        T00 = np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2)
 
-    if (T < T00 + Mmax * np.pi) and (Mmax > 0):
-        Halley1d(0, ) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
-        if Tmin > T:
+        if (T < T00 + Mmax * np.pi) and (Mmax > 0):
+            Halley1d(0, ) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
+            if Tmin > T:
+                Mmax -= 1
+
+        T1 = 2 / 3 * (1 - Lambda ** 3)
+
+        if T >= T0: x0 = (T0 / T) ** (2 / 3) - 1
+        elif T < T1: x0 = 5 / 2 * T1 * (T1 - T) / (T * (1 - Lambda ** 5)) - 1
+        else: x0 = (T0 / T) ** np.log2(T1 / T0) - 1
+
+        x, y = Householder1d(x0, func)
+
+        while Mmax > 0:
+            x0l, x0r = (((Mmax + 1) * np.pi / (8 * T)) ** (2 / 3) - 1) / (((Mmax + 1) * np.pi / (8 * T)) ** (2 / 3) + 1), 
+                ((8 * T) / (Mmax * np.pi) ** (2 / 3) - 1) / ((8 * T) / (Mmax * np.pi) ** (2 / 3) + 1)
+            xr, yr = Householder1d(x0l, func)
+            xl, yl = Householder1d(x0r, func)
             Mmax -= 1
 
-    T1 = 2 / 3 * (1 - Lambda ** 3)
-
-    if T >= T0: x0 = (T0 / T) ** (2 / 3) - 1
-    elif T < T1: x0 = 5 / 2 * T1 * (T1 - T) / (T * (1 - Lambda ** 5)) - 1
-    else: x0 = (T0 / T) ** np.log2(T1 / T0) - 1
-
-    x, y = Householder1d(x0, func)
-
-    while Mmax > 0:
-        x0l, x0r = (((Mmax + 1) * np.pi / (8 * T)) ** (2 / 3) - 1) / (((Mmax + 1) * np.pi / (8 * T)) ** (2 / 3) + 1), 
-            ((8 * T) / (Mmax * np.pi) ** (2 / 3) - 1) / ((8 * T) / (Mmax * np.pi) ** (2 / 3) + 1)
-        xr, yr = Householder1d(x0l, func)
-        xl, yl = Householder1d(x0r, func)
-        Mmax -= 1
-
-    return [(x, y), (xr, yr), (xl, yl)]
+        return [(x, y), (xr, yr), (xl, yl)]
 
 def Halley1d(x0, func, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 2 (y_(n+1)) = y_n - (2f*f') / (2f'^2 - f*f'')
