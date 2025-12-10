@@ -12,8 +12,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
     orbit2params = (r2a, r2p, i2, RAAN2, w2)
 
     grid = loopOverOrbits(orbit1params, orbit2params, TOF_range, Mmax, mu)
-    coarse1, coarse2 = minCoords(grid) # Rough estimate of the minimum delta V point
-    point1, point2, deltaV = NelderMead2d(coarse1, coarse2)
+    point1, point2 = minCoords(grid) # Rough estimate of the minimum delta V point
     plotTrajectory(point1, point2) # Placeholder
 
     return ans
@@ -37,7 +36,7 @@ def loopOverOrbits(init, final, TOF_range, Mmax, mu): # Creates a grid of n = nu
         r1, v1 = PFtoECIframe(orbit1params, TA1)
         for TA2 in TA_array:
             r2, v2 = PFtoECIframe(orbit2params, TA2)
-            minDeltaVgrid[TA1][TA2] = minDeltaVTrajectory(r1, r2, TOF_range, Mmax, mu)
+            minDeltaVgrid[TA1][TA2] = minDeltaVTrajectory(r1, v1, r2, v2, TOF_range, Mmax, mu)
 
     return minDeltaVgrid
 
@@ -61,27 +60,41 @@ def PFtoECIframe(params, TA): # Converts from PF frame to ECI frame
     
     return [reci, veci] 
 
-def minDeltaVTrajectory(r1, r2, TOF_range, Mmax, mu): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
-    deltaV = float('inf')
+def minDeltaVTrajectory(r1, v1, r2, v2, TOF_range, Mmax, mu): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
+    minDeltaV = float('inf')
 
     for M in range(0, Mmax + 1):
         # The following set of if statements are because I created the TOF ranges to be dependent on current M; when m = 0
         # the TOF is essentially 0 to outer orbit period, and when m > 0 the TOF is from M * inner orbit period to 
-        # (M + 1) * outer orbit period. 
+        # (M + 1) * outer orbit period.  This loop currently finds the smallest delta V for a given r1, r2 and the goal is to
+        # define the smallest delta V trajectory. 
 
         if M == 0: TOFs = TOF_range[0]
         else: TOFs = TOF_range[1]
-        for TOF in TOFs:
-            vt1, v2t = lambertIzzoMethod(r1, r2, TOF, M, mu) # Returns two arrays for vt1 and v2t
-            deltaV = min(deltaV, Math.abs(v2 - v2t) + Math.abs(vt1 - v1))
 
-    return deltaV
+        minDeltaVTOFi = 0 # arbitrary index of TOF array
+
+        # To clarify, this is refining over the rough TOF range that I initialized
+        for TOFi in range(len(TOFs)):
+            vt1, v2t = lambertIzzoMethod(r1, r2, TOFs[TOFi], M, mu) # Returns two arrays for vt1 and v2t
+        
+            for i in range(len(vt1)):
+                currentDeltaV = Math.abs(v2 - v2t[i]) + Math.abs(vt1[i] - v1)
+
+                if currentDeltaV < minDeltaV: 
+                    minDeltaV = currentDeltaV
+                    minDeltaVTOFi = TOFi
+
+        minDeltaV = Brent1d(TOFi - 1, TOFi + 1, ) # Figure out how to call lambertIzzo so that it's minimizable; should return minimum delta V, not two arrays
+
+    return minDeltaV
 
 def minCoords(grid): # Finds the location of the min delta V trajectory in the 3d plot created by loopOverOrbits
     minDeltaV = float('inf')
     minDVCoords = (0, 0)
     numOrbitSamples = len(grid)
-
+    
+    # This is simply finding the coarse minimum of the grid before refining with Nelder-Mead
     for coord1 in range(numOrbitSamples):
         for coord2 in range(numOrbitSamples):
             currentDeltaV = grid[coord1][coord2]
@@ -89,9 +102,11 @@ def minCoords(grid): # Finds the location of the min delta V trajectory in the 3
                 minDeltaV = currentDeltaV
                 minDVCoords = (coord1, coord2)
 
+    point1, point2, deltaV = NelderMead2d(minDVCoords(0), minDVCoords(1), lambertIzzoMethod()) # Fix Nelder-Mead call (simplex)
+
     return minDVCoords
 
-def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for solving Lambert's Problem, returns velocities instead of xs, ys
+def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for solving Lambert's Problem, returns velocities instead of x, y
     cvec = r2vec - r1vec
     c, r1, r2 = np.linalg.norm(cvec), np.linalg.norm(r1vec), np.linalg.norm(r2vec)
     s = (c + r1 + r2) / 2
@@ -177,8 +192,7 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
         def d3TOFdx3(x):
             return ((7 * x * d2TOFdx2(x) + 8 * dTOFdx(x) - 6 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 5 * x)) / (1 - x ** 2)
 
-
-# 1d Rootfinding Algorithms, 
+# 1d Rootfinding Algorithms, used to find minimums or roots of functions for minimum delta V trajectory call stack
 
 def Halley1d(xn, f, dfdx, d2fdx2, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 2 (y_(n+1)) = y_n - (2f*f') / (2f'^2 - f*f'')
