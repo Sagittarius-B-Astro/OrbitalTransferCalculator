@@ -119,60 +119,66 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
     
     return vt1, v2t
 
-    def findxy(Lambda, T): # Helper function for LambertIzzo solver
+    def findxy(Lambda, T): # Helper function for LambertIzzo solver, returns 2 * Mmax + 1 solutions
         assert np.abs(Lambda) < 1 # Magnitude of lambda must be less than 1
         assert T > 0 # T must be more than 0. There was a typo in the paper
 
-        Mmax = np.floor(T / np.pi)
-        T00 = np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2)
+        solutions = []
 
-        if (T < T00 + Mmax * np.pi) and (Mmax > 0):
-            Halley1d(0, Mmax) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
+        Mmax = np.floor(T / np.pi)
+        # I omitted T00 = TOF(0, 0) because I may as well calculate it in the if statement since I never use it again.
+
+        if (T < TOF(0)) and (Mmax > 0):
+            Halley1d(0, dTOFdx(0), d2TOFdx2(0), d3TOFdx3(0)) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
             # Note: Final steps are to calculate Tmin(Mmax) by taking the Halley's method for dT/dx = 0. This actaully makes sense since Householder
             # for dT/dx would require the fourth derivative, which is not worth calculating.  
             if Tmin > T:
                 Mmax -= 1
 
-        T1 = 2 / 3 * (1 - Lambda ** 3)
+        T1 = TOF(1)
 
         if T >= T0: x0 = (T0 / T) ** (2 / 3) - 1
         elif T < T1: x0 = 5 / 2 * T1 * (T1 - T) / (T * (1 - Lambda ** 5)) - 1
         else: x0 = (T0 / T) ** np.log2(T1 / T0) - 1
 
-        x, y = Householder1d(x0, func)
+        x, y = Householder1d(x0, TOF(0, 0) - T, dTOFdx(0), d2TOFdx2(0), d3TOFdx3(0)), y(x)
+        solutions[0] = (x, y)
 
-        while Mmax > 0:
-            x0l, x0r = (((Mmax + 1) * np.pi / (8 * T)) ** (2 / 3) - 1) / (((Mmax + 1) * np.pi / (8 * T)) ** (2 / 3) + 1), 
-                ((8 * T) / (Mmax * np.pi) ** (2 / 3) - 1) / ((8 * T) / (Mmax * np.pi) ** (2 / 3) + 1)
-            xr, yr = Householder1d(x0l, func)
-            xl, yl = Householder1d(x0r, func)
-            Mmax -= 1
+        # Renamed variable because it's a little confusing on first glance and it also stores them in reverse with the exception of the M = 0 case.
+        for M in range(1, Mmax + 1):
+            x0l, x0r = (((M + 1) * np.pi / (8 * T)) ** (2 / 3) - 1) / (((M + 1) * np.pi / (8 * T)) ** (2 / 3) + 1), 
+                ((8 * T) / (M * np.pi) ** (2 / 3) - 1) / ((8 * T) / (M * np.pi) ** (2 / 3) + 1)
+            xr, yr = Householder1d(x0l, TOF(0, M) - T, dTOFdx(0), d2TOFdx2(0), d3TOFdx3(0)), y(xr)
+            xl, yl = Householder1d(x0r, TOF(0, M) - T, dTOFdx(0), d2TOFdx2(0), d3TOFdx3(0)), y(xl)
+            solutions[2 * M - 1] = (xr, yr)
+            solutions[2 * M] = (xl, yl)
 
-        return [(x, y), (xr, yr), (xl, yl)]
+        return solutions
         
         # TOF, y equations from Izzo's paper for Lambert Method
 
         def y(x): return np.sqrt(1 - Lambda ** 2 * (1 - x ** 2))
 
-        def TOF(x, Mmax):
+        def TOF(x, M = Mmax):
             if x == 1: return 2 / 3 * (1 - Lambda ** 3)
-            if x == 0: return -2
+            if x == 0: return np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2) + M * np.pi
             y = y(x)
             psi = np.arccos(x * y + Lambda * (1 - x ** 2))
             return ((psi + M * pi) / np.sqrt(abs(1 - x ** 2)) - x + Lambda * y) / (1 - x ** 2)
 
         def dTOFdx(x):
             if x == 1: return 2 / 5 * (Lambda ** 5 - 1)
-            return ((3 * T * x) - 2 + 2 * Lambda ** 3 * x / y(x)) / (1 - x ** 2)
+            if x == 0: return -2
+            return ((3 * TOF(x) * x) - 2 + 2 * Lambda ** 3 * x / y(x)) / (1 - x ** 2)
 
         def d2TOFdx2(x):
-            return ((3 * T + 5 * x * dTOFdx(x) + 2 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 3)) / (1 - x ** 2)
+            return ((3 * TOF(x) + 5 * x * dTOFdx(x) + 2 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 3)) / (1 - x ** 2)
 
         def d3TOFdx3(x):
             return ((7 * x * d2TOFdx2(x) + 8 * dTOFdx(x) - 6 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 5 * x)) / (1 - x ** 2)
 
 
-# Rootfinding Algorithms
+# 1d Rootfinding Algorithms, 
 
 def Halley1d(xn, f, dfdx, d2fdx2, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 2 (y_(n+1)) = y_n - (2f*f') / (2f'^2 - f*f'')
@@ -181,7 +187,6 @@ def Halley1d(xn, f, dfdx, d2fdx2, tol = 1e-5, max_steps = 10):
 def Householder1d(xn, f, dfdx, d2fdx2, d3fdx3, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
     return xn - f(xn) * (dfdx(xn) ** 2 - f(xn) * d2fdx2(xn) / 2) / ((dfdx(xn) * (dfdx(xn) ** 2 - f(xn) * d2fdx2(xn))) + d3fdx3(xn) * f(xn) ** 2 / 6)
-
 
 def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000): # Brent's bracketing method
     fa, fb = func(a), func(b)
@@ -224,6 +229,8 @@ def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000): # Brent's bracketing meth
         steps += 1
 
     return b, steps  
+
+# 2d Minimizing Algorithms, tested to find which is most efficient in finding smallest delta V
 
 def NelderMead2d(simplex, func, xtol = 1e-4, ftol = 1e-4, max_steps = 1000): # Nelder-Mead local optimization
     # The function should expect a numpy array representing the points 
