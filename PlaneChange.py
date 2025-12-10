@@ -127,9 +127,9 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
         T00 = np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2)
 
         if (T < T00 + Mmax * np.pi) and (Mmax > 0):
-            Halley1d(0, ) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
+            Halley1d(0, Mmax) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
             # Note: Final steps are to calculate Tmin(Mmax) by taking the Halley's method for dT/dx = 0. This actaully makes sense since Householder
-            # for dT/dx would require the fourth derivative, which is not worth calculating. 
+            # for dT/dx would require the fourth derivative, which is not worth calculating.  
             if Tmin > T:
                 Mmax -= 1
 
@@ -149,12 +149,39 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
             Mmax -= 1
 
         return [(x, y), (xr, yr), (xl, yl)]
+        
+        # TOF, y equations from Izzo's paper for Lambert Method
 
-def Halley1d(x0, func, tol = 1e-5, max_steps = 10):
+        def y(x): return np.sqrt(1 - Lambda ** 2 * (1 - x ** 2))
+
+        def TOF(x, Mmax):
+            if x == 1: return 2 / 3 * (1 - Lambda ** 3)
+            if x == 0: return -2
+            y = y(x)
+            psi = np.arccos(x * y + Lambda * (1 - x ** 2))
+            return ((psi + M * pi) / np.sqrt(abs(1 - x ** 2)) - x + Lambda * y) / (1 - x ** 2)
+
+        def dTOFdx(x):
+            if x == 1: return 2 / 5 * (Lambda ** 5 - 1)
+            return ((3 * T * x) - 2 + 2 * Lambda ** 3 * x / y(x)) / (1 - x ** 2)
+
+        def d2TOFdx2(x):
+            return ((3 * T + 5 * x * dTOFdx(x) + 2 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 3)) / (1 - x ** 2)
+
+        def d3TOFdx3(x):
+            return ((7 * x * d2TOFdx2(x) + 8 * dTOFdx(x) - 6 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 5 * x)) / (1 - x ** 2)
+
+
+# Rootfinding Algorithms
+
+def Halley1d(xn, f, dfdx, d2fdx2, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 2 (y_(n+1)) = y_n - (2f*f') / (2f'^2 - f*f'')
+    return xn - (2 * f(xn) * dfdx(xn)) / (2 * dfdx(xn) ** 2 - f * d2fdx2(xn))
 
-def Householder1d(x0, func, tol = 1e-5, max_steps = 10):
+def Householder1d(xn, f, dfdx, d2fdx2, d3fdx3, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
+    return xn - f(xn) * (dfdx(xn) ** 2 - f(xn) * d2fdx2(xn) / 2) / ((dfdx(xn) * (dfdx(xn) ** 2 - f(xn) * d2fdx2(xn))) + d3fdx3(xn) * f(xn) ** 2 / 6)
+
 
 def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000): # Brent's bracketing method
     fa, fb = func(a), func(b)
