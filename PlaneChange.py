@@ -85,7 +85,8 @@ def minDeltaVTrajectory(r1, v1, r2, v2, TOF_range, Mmax, mu): # Determines the m
                     minDeltaV = currentDeltaV
                     minDeltaVTOFi = TOFi
 
-        minDeltaV = Brent1d(TOFi - 1, TOFi + 1, ) # Figure out how to call lambertIzzo so that it's minimizable; should return minimum delta V, not two arrays
+        # Figure out how to call lambertIzzo so that it's minimizable; should return minimum delta V, not two arrays
+        minDeltaV = Brent1d(TOFi - 1, TOFi + 1, lambertIzzoMinimizer(TOF, r1, r2, M, mu)) #doesn't feel right to have TOF in the function call. Retry tmrw
 
     return minDeltaV
 
@@ -105,6 +106,15 @@ def minCoords(grid): # Finds the location of the min delta V trajectory in the 3
     point1, point2, deltaV = NelderMead2d(minDVCoords(0), minDVCoords(1), lambertIzzoMethod()) # Fix Nelder-Mead call (simplex)
 
     return minDVCoords
+
+def lambertIzzoMinimizer(TOF, r1vec, r2vec, M, mu): # Finds the minimum solution to lambertIzzo method. Helper function for Brent
+    vt1, v2t = lambertIzzoMethod(r1, r2, TOFs[TOFi], M, mu)
+
+    for i in range(len(vt1)):
+        currentDeltaV = Math.abs(v2 - v2t[i]) + Math.abs(vt1[i] - v1)
+        minDeltaV = min(currentDeltaV, minDeltaV)
+
+    return minDeltaV
 
 def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for solving Lambert's Problem, returns velocities instead of x, y
     cvec = r2vec - r1vec
