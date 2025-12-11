@@ -17,7 +17,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
 
     return ans
 
-def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range up to a given Mmax. The first element is for M = 0, second is for M > 0
+def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range depending on Mmax input. The first element is for M = 0, second is for M > 0
     TOFs = [(0, 0)] * 2
     TOrbitSmall, TOrbitBig = 2 * np.pi * np.sqrt(a1 ** 3 / mu), 2 * np.pi * np.sqrt(a2 ** 3 / mu)
     TOFsamples = 9 # Used for coarse sampling, may give user the option later
@@ -36,7 +36,8 @@ def loopOverOrbits(init, final, TOF_range, Mmax, mu): # Creates a grid of n = nu
         r1, v1 = PFtoECIframe(orbit1params, TA1)
         for TA2 in TA_array:
             r2, v2 = PFtoECIframe(orbit2params, TA2)
-            minDeltaVgrid[TA1][TA2] = minDeltaVTrajectory(r1, v1, r2, v2, TOF_range, Mmax, mu)
+            IzzoParams = (r1, r2, Mmax, mu) # Everything needed for Izzo except TOF, passed separately to distinguish and because it's an array
+            minDeltaVgrid[TA1][TA2] = minDeltaVTrajectory(v1, v2, TOF_range, IzzoParams)
 
     return minDeltaVgrid
 
@@ -60,11 +61,14 @@ def PFtoECIframe(params, TA): # Converts from PF frame to ECI frame
     
     return [reci, veci] 
 
-def minDeltaVTrajectory(r1, v1, r2, v2, TOF_range, Mmax, mu): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
+def minDeltaVTrajectory(v1, v2, TOF_range, IzzoParams): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
+    r1, r2, Mmax, mu = IzzoParams
     minDeltaV = float('inf')
+    minDeltaVTOFleft, minDeltaVTOFright = 0, 0 # arbitrary localized range of TOF array containing minDeltaV TOF
+    minDeltaVM = 0 # arbitrary M
 
     for M in range(0, Mmax + 1):
-        # The following set of if statements are because I created the TOF ranges to be dependent on current M; when m = 0
+        # The following pair of if statements are because I created the TOF ranges to be dependent on current M; when m = 0
         # the TOF is essentially 0 to outer orbit period, and when m > 0 the TOF is from M * inner orbit period to 
         # (M + 1) * outer orbit period.  This loop currently finds the smallest delta V for a given r1, r2 and the goal is to
         # define the smallest delta V trajectory. 
@@ -72,12 +76,11 @@ def minDeltaVTrajectory(r1, v1, r2, v2, TOF_range, Mmax, mu): # Determines the m
         if M == 0: TOFs = TOF_range[0]
         else: TOFs = TOF_range[1]
 
-        minDeltaVTOFi = 0 # arbitrary index of TOF array
-
         # To clarify, this is refining over the rough TOF range that I initialized. 
         for TOFi in range(len(TOFs)):
             # This looks basically the same as the lambertIzzoMinimizer, and that's because it is. The difference is that this one
-            # 
+            # takes note of which of the randomly sampled TOF points has the lowest minDeltaV. The Minimizer does not save this infomration
+            # because its purpose is to return only the minimum delta V. 
             vt1, v2t = lambertIzzoMethod(r1, r2, TOFs[TOFi], M, mu) # Returns two arrays for vt1 and v2t
         
             for i in range(len(vt1)):
@@ -85,23 +88,14 @@ def minDeltaVTrajectory(r1, v1, r2, v2, TOF_range, Mmax, mu): # Determines the m
 
                 if currentDeltaV < minDeltaV: 
                     minDeltaV = currentDeltaV
-                    minDeltaVTOFi = TOFi
-
-        def lambertIzzoMinimizer(TOF): # Finds the minimum solution to lambertIzzo method. Helper function for Brent
-            vt1, v2t = lambertIzzoMethod(r1, r2, TOF, M, mu)
-
-            for i in range(len(vt1)):
-                currentDeltaV = Math.abs(v2 - v2t[i]) + Math.abs(vt1[i] - v1)
-                minDeltaV = min(currentDeltaV, minDeltaV)
-
-            return minDeltaV
+                    minDeltaVTOFleft, minDeltaVTOFright = TOFs[TOFi - 1], TOFs[TOFi + 1]
 
         # Figure out how to call lambertIzzo so that it's minimizable; should return minimum delta V, not two arrays
-        minDeltaV = Brent1d(TOFs[TOFi - 1], TOFs[TOFi + 1], lambertIzzoMinimizer(TOF))
+        minDeltaV = Brent1d(minDeltaVTOFleft, minDeltaVTOFright, Izzo = lambda TOF: lambertIzzoMinimizer(TOF, v1, v2, IzzoParams))
 
     return minDeltaV
 
-def minCoords(grid): # Finds the location of the min delta V trajectory in the 3d plot created by loopOverOrbits
+def minCoords(grid, v1, v2, TOF_range): # Finds the location of the min delta V trajectory in the 3d plot created by loopOverOrbits
     minDeltaV = float('inf')
     minDVCoords = (0, 0)
     numOrbitSamples = len(grid)
@@ -114,9 +108,19 @@ def minCoords(grid): # Finds the location of the min delta V trajectory in the 3
                 minDeltaV = currentDeltaV
                 minDVCoords = (coord1, coord2)
 
-    point1, point2, deltaV = NelderMead2d(minDVCoords(0), minDVCoords(1), lambertIzzoMethod()) # Fix Nelder-Mead call (simplex)
+    point1, point2, deltaV = NelderMead2d(minDVCoords(0), minDVCoords(1), Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams)) # Fix Nelder-Mead call (simplex)
 
     return minDVCoords
+
+def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambertIzzo method. Used for Brent and Nelder-Mead
+    r1, r2, Mmax, mu = IzzoParams
+    vt1, v2t = lambertIzzoMethod(r1, r2, TOF, M, mu)
+
+    for i in range(len(vt1)):
+        currentDeltaV = Math.abs(v2 - v2t[i]) + Math.abs(vt1[i] - v1)
+        minDeltaV = min(currentDeltaV, minDeltaV)
+
+    return minDeltaV
 
 def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for solving Lambert's Problem, returns velocities instead of x, y
     cvec = r2vec - r1vec
