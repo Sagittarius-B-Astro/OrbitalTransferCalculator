@@ -156,7 +156,7 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
         # I omitted T00 = TOF(0, 0) because I may as well calculate it in the if statement since I never use it again.
 
         if (T < TOF(0)) and (Mmax > 0):
-            Halley1d(0, dTOFdx(0), d2TOFdx2(0), d3TOFdx3(0)) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
+            Tmin = TOF(Halley1d(0, dTOFdx, d2TOFdx2, d3TOFdx3)) # solve Halley iterations from x = 0, T = T0 and find Tmin(Mmax)
             # Note: Final steps are to calculate Tmin(Mmax) by taking the Halley's method for dT/dx = 0. This actaully makes sense since Householder
             # for dT/dx would require the fourth derivative, which is not worth calculating.  
             if Tmin > T:
