@@ -125,7 +125,10 @@ def trajectoryParams(orbit1params, orbit2params, TA1, TA2, mu):
         nv, n = np.cross(k, hv), np.linalg.norm(nv)
         a = (2 / np.linalg.norm(r) - np.linalg.norm(v) ** 2 / mu) ** -1
 
-        i = np.arccos(hv[3] / h)
+        i = np.arccos(hv[2] / h)
+        if nv[1] >= 0: RAAN = np.arccos(nv[0] / n) else RAAN = 2 * np.pi - np.arccos(nv[0]/n)
+        if ev[2] >= 0: w = np.arccos(np.dot(nv, ev) / (n * e)) else w = 2 * np.pi - np.arccos(np.dot(nv, ev) / (n * e))
+        if np.dot(r, v) >= 0: w = np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r))) else w = 2 * np.pi - np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r)))
 
 
 
