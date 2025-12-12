@@ -12,8 +12,9 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
     orbit2params = (r2a, r2p, i2, RAAN2, w2)
 
     grid = loopOverOrbits(orbit1params, orbit2params, TOF_range, Mmax, mu)
-    point1, point2 = minCoords(grid) # Rough estimate of the minimum delta V point
-    plotTrajectory(point1, point2) # Placeholder
+    point1, point2 = minCoords(grid, orbit1params, orbit2params, TOF_range, Mmax, mu) # Returns minimum delta V point
+    bestParams = trajectoryParams(orbit1params, orbit2params, point1, point2, mu) # Returns best possible trajectory params for plotting
+    plotTrajectory(bestParams) # Placeholder
 
     return ans
 
@@ -108,9 +109,14 @@ def minCoords(grid, v1, v2, TOF_range): # Finds the location of the min delta V 
                 minDeltaV = currentDeltaV
                 minDVCoords = (coord1, coord2)
 
+    # IzzoParams must now convert from PF to ECI with TAs corresponding to coordinates of orbits instead.  
     point1, point2, deltaV = NelderMead2d(minDVCoords(0), minDVCoords(1), Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams)) # Fix Nelder-Mead call (simplex)
 
     return minDVCoords
+
+def trajectoryParams(orbit1params, orbit2params, TA1, TA2, mu):
+    
+
 
 def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambertIzzo method. Used for Brent and Nelder-Mead
     r1, r2, Mmax, mu = IzzoParams
