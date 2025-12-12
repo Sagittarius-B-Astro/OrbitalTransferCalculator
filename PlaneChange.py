@@ -115,7 +115,19 @@ def minCoords(grid, v1, v2, TOF_range): # Finds the location of the min delta V 
     return minDVCoords
 
 def trajectoryParams(orbit1params, orbit2params, TA1, TA2, mu):
-    
+    r1, v1 = PFtoECIframe(orbit1params, TA1)
+    r2, v2 = PFtoECIframe(orbit2params, TA2)
+    k = np.array([0, 0, 1])
+
+    def timeFromPeriapsis(r, v):
+        hv, h = np.cross(r, v), np.linalg.norm(hv)
+        ev, e = ((np.linalg.norm(v) ** 2 - mu / np.linalg.norm(r)) * r1 - np.dot(r, v) * v) / mu, np.linalg.norm(ev)
+        nv, n = np.cross(k, hv), np.linalg.norm(nv)
+        a = (2 / np.linalg.norm(r) - np.linalg.norm(v) ** 2 / mu) ** -1
+
+        i = np.arccos(hv[3] / h)
+
+
 
 
 def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambertIzzo method. Used for Brent and Nelder-Mead
