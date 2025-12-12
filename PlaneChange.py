@@ -31,34 +31,34 @@ def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range depending on Mmax i
 def loopOverOrbits(init, final, TOF_range, Mmax, mu): # Creates a grid of n = numOrbitSamples uniformly sampled minDeltaV points for every (TA1, TA2) point
     numOrbitSamples = 50
     TA_array = np.linspace(0, 360, numOrbitSamples)
-    minDeltaVgrid = [[0] * n for _ in range(n)]
+    minDeltaVgrid = [[0] * numOrbitSamples for _ in range(numOrbitSamples)]
 
     for TA1 in TA_array:
-        r1, v1 = PFtoECIframe(orbit1params, TA1)
+        r1, v1 = PFtoECIframe(init, TA1)
         for TA2 in TA_array:
-            r2, v2 = PFtoECIframe(orbit2params, TA2)
+            r2, v2 = PFtoECIframe(final, TA2)
             IzzoParams = (r1, v1, r2, v2, Mmax, mu) # Everything needed for Izzo except TOF, passed separately to distinguish and because it's an array
             minDeltaVgrid[TA1][TA2] = minDeltaV(TOF_range, IzzoParams)
 
     return minDeltaVgrid
 
 def PFtoECIframe(params, TA): # Converts from PF frame to ECI frame
-    {ra, rp, i, RAAN, w} = params
+    ra, rp, i, RAAN, w = params
     a = (ra + rp) / 2
     e = (ra - rp) / (ra + rp)
     p = a * (1 - e ** 2)
-    r = p / (1 + e * Math.cos(TA))
+    r = p / (1 + e * np.cos(TA))
 
-    rpf = [[r * Math.cos(TA)], [r * Math.sin(TA)], [0]];
-    vpf = Math.sqrt(mu / p) * [[-Math.sin(TA)], [e + Math.cos(TA)], [0]];
+    rpf = np.array([[r * np.cos(TA)], [r * np.sin(TA)], [0]])
+    vpf = np.array(np.sqrt(mu / p) * [[-np.sin(TA)], [e + np.cos(TA)], [0]])
     reci = Rz(RAAN) @ Rx(i) @ Rz(w) @ rpf
     veci = Rz(RAAN) @ Rx(i) @ Rz(w) @ vpf
     
     def Rz(A):
-        return np.array([[Math.cos(A), -Math.sin(A),0], [Math.sin(A), Math.cos(A),0], [0, 0, 1]])
+        return np.array([[np.cos(A), -np.sin(A),0], [np.sin(A), np.cos(A),0], [0, 0, 1]])
 
     def Rx(A):
-        return np.array([[1,0,0], [0, Math.cos(A), -Math.sin(A)], [0, Math.sin(A), Math.cos(A)]])
+        return np.array([[1,0,0], [0, np.cos(A), -np.sin(A)], [0, np.sin(A), np.cos(A)]])
     
     return [reci, veci] 
 
@@ -85,7 +85,7 @@ def minDeltaV(TOF_range, IzzoParams): # Determines the minimum delta V trajector
             vt1, v2t = lambertIzzoMethod(r1, r2, TOFs[TOFi], M, mu) # Returns two arrays for vt1 and v2t
         
             for i in range(len(vt1)):
-                currentDeltaV = Math.abs(v2 - v2t[i]) + Math.abs(vt1[i] - v1)
+                currentDeltaV = np.abs(v2 - v2t[i]) + np.abs(vt1[i] - v1)
 
                 if currentDeltaV < minDeltaV: 
                     minDeltaV = currentDeltaV
@@ -149,7 +149,7 @@ def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambe
     vt1, v2t = lambertIzzoMethod(r1, r2, TOF, M, mu)
 
     for i in range(len(vt1)):
-        currentDeltaV = Math.abs(v2 - v2t[i]) + Math.abs(vt1[i] - v1)
+        currentDeltaV = np.abs(v2 - v2t[i]) + np.abs(vt1[i] - v1)
         minDeltaV = min(currentDeltaV, minDeltaV)
 
     return minDeltaV
@@ -242,9 +242,11 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
 
 # 1d Rootfinding Algorithms, used to find minimums or roots of functions for minimum delta V trajectory call stack
 
+
+# THESE BOTH CURRENTLY  ARE ONE ITERATION
 def Halley1d(xn, f, dfdx, d2fdx2, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 2 (y_(n+1)) = y_n - (2f*f') / (2f'^2 - f*f'')
-    return xn - (2 * f(xn) * dfdx(xn)) / (2 * dfdx(xn) ** 2 - f * d2fdx2(xn))
+    return xn - (2 * f(xn) * dfdx(xn)) / (2 * dfdx(xn) ** 2 - f(xn) * d2fdx2(xn))
 
 def Householder1d(xn, f, dfdx, d2fdx2, d3fdx3, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
