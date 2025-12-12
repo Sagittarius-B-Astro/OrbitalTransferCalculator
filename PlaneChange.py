@@ -119,7 +119,13 @@ def trajectoryParams(orbit1params, orbit2params, TA1, TA2, mu):
     r2, v2 = PFtoECIframe(orbit2params, TA2)
     k = np.array([0, 0, 1])
 
-    def timeFromPeriapsis(r, v):
+    E1, E2 = eccentricAnomaly(r1, v1), eccentricAnomaly(r2, v2)
+
+    rOrbitE = [x = lambda E: a * (np.cos(E) - e), y = lambda E: a * np.sqrt(1 - e ** 2) * np.sin(E), 0]
+
+    return rOrbitE, [E1, E2]
+
+    def eccentricAnomaly(r, v):
         hv, h = np.cross(r, v), np.linalg.norm(hv)
         ev, e = ((np.linalg.norm(v) ** 2 - mu / np.linalg.norm(r)) * r1 - np.dot(r, v) * v) / mu, np.linalg.norm(ev)
         nv, n = np.cross(k, hv), np.linalg.norm(nv)
@@ -130,8 +136,7 @@ def trajectoryParams(orbit1params, orbit2params, TA1, TA2, mu):
         if ev[2] >= 0: w = np.arccos(np.dot(nv, ev) / (n * e)) else w = 2 * np.pi - np.arccos(np.dot(nv, ev) / (n * e))
         if np.dot(r, v) >= 0: w = np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r))) else w = 2 * np.pi - np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r)))
 
-
-
+        return 2 * np.arctan(np.sqrt((1 - e) / (1 + e)) * tan(TA / 2))
 
 def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambertIzzo method. Used for Brent and Nelder-Mead
     r1, r2, Mmax, mu = IzzoParams
