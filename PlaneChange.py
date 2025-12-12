@@ -242,16 +242,27 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
 
 # 1d Rootfinding Algorithms, used to find minimums or roots of functions for minimum delta V trajectory call stack
 
-
 # THESE BOTH CURRENTLY  ARE ONE ITERATION
 def Halley1d(xn, f, dfdx, d2fdx2, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 2 (y_(n+1)) = y_n - (2f*f') / (2f'^2 - f*f'')
-    return xn - (2 * f(xn) * dfdx(xn)) / (2 * dfdx(xn) ** 2 - f(xn) * d2fdx2(xn))
+    xp = xn + 1e-4
+    steps = 0
+
+    while steps < max_steps and np.abs(xn - xp) > tol:
+        xn = xn - (2 * f(xn) * dfdx(xn)) / (2 * dfdx(xn) ** 2 - f(xn) * d2fdx2(xn))
+
+    return xn
 
 def Householder1d(xn, f, dfdx, d2fdx2, d3fdx3, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 3 (y_(n+1) = y_n - f/f' * (1-f*f''/2f'^2) / (1-f*f''/2f'^2+f^2f'''/6f'^3))
-    return xn - f(xn) * (dfdx(xn) ** 2 - f(xn) * d2fdx2(xn) / 2) / ((dfdx(xn) * (dfdx(xn) ** 2 - f(xn) * d2fdx2(xn))) + d3fdx3(xn) * f(xn) ** 2 / 6)
+    xp = xn + 1e-4
+    steps = 0
 
+    while steps < max_steps and np.abs(xn - xp) > tol:
+        xn = xn - f(xn) * (dfdx(xn) ** 2 - f(xn) * d2fdx2(xn) / 2) / ((dfdx(xn) * (dfdx(xn) ** 2 - f(xn) * d2fdx2(xn))) + d3fdx3(xn) * f(xn) ** 2 / 6)
+
+    return xn
+    
 def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000): # Brent's bracketing method
     fa, fb = func(a), func(b)
 
