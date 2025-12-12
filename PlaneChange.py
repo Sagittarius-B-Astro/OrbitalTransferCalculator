@@ -12,8 +12,8 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
     orbit2params = (r2a, r2p, i2, RAAN2, w2)
 
     grid = loopOverOrbits(orbit1params, orbit2params, TOF_range, Mmax, mu)
-    point1, point2 = minCoords(grid, orbit1params, orbit2params, TOF_range, Mmax, mu) # Returns minimum delta V point
-    bestParams = trajectoryParams(orbit1params, orbit2params, point1, point2, mu) # Returns best possible trajectory params for plotting
+    minDVCoords = minCoords(grid, orbit1params, orbit2params, TOF_range, Mmax, mu) # Returns minimum delta V point
+    bestParams = trajectoryParams(orbit1params, orbit2params, minDVCoords, mu) # Returns best possible trajectory params for plotting
     plotTrajectory(bestParams) # Placeholder
 
     return ans
@@ -37,8 +37,8 @@ def loopOverOrbits(init, final, TOF_range, Mmax, mu): # Creates a grid of n = nu
         r1, v1 = PFtoECIframe(orbit1params, TA1)
         for TA2 in TA_array:
             r2, v2 = PFtoECIframe(orbit2params, TA2)
-            IzzoParams = (r1, r2, Mmax, mu) # Everything needed for Izzo except TOF, passed separately to distinguish and because it's an array
-            minDeltaVgrid[TA1][TA2] = minDeltaVTrajectory(v1, v2, TOF_range, IzzoParams)
+            IzzoParams = (r1, v1, r2, v2, Mmax, mu) # Everything needed for Izzo except TOF, passed separately to distinguish and because it's an array
+            minDeltaVgrid[TA1][TA2] = minDeltaV(TOF_range, IzzoParams)
 
     return minDeltaVgrid
 
@@ -62,8 +62,8 @@ def PFtoECIframe(params, TA): # Converts from PF frame to ECI frame
     
     return [reci, veci] 
 
-def minDeltaVTrajectory(v1, v2, TOF_range, IzzoParams): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
-    r1, r2, Mmax, mu = IzzoParams
+def minDeltaV(TOF_range, IzzoParams): # Determines the minimum delta V trajectory by looking at all the possible Ms and branches
+    r1, v1, r2, v2, Mmax, mu = IzzoParams
     minDeltaV = float('inf')
     minDeltaVTOFleft, minDeltaVTOFright = 0, 0 # arbitrary localized range of TOF array containing minDeltaV TOF
     minDeltaVM = 0 # arbitrary M
@@ -92,11 +92,11 @@ def minDeltaVTrajectory(v1, v2, TOF_range, IzzoParams): # Determines the minimum
                     minDeltaVTOFleft, minDeltaVTOFright = TOFs[TOFi - 1], TOFs[TOFi + 1]
 
         # Figure out how to call lambertIzzo so that it's minimizable; should return minimum delta V, not two arrays
-        minDeltaV = Brent1d(minDeltaVTOFleft, minDeltaVTOFright, Izzo = lambda TOF: lambertIzzoMinimizer(TOF, v1, v2, IzzoParams))
+        minDeltaV = Brent1d(minDeltaVTOFleft, minDeltaVTOFright, Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams))
 
     return minDeltaV
 
-def minCoords(grid, v1, v2, TOF_range): # Finds the location of the min delta V trajectory in the 3d plot created by loopOverOrbits
+def minCoords(grid, init, final, TOF_range, Mmax, mu): # Finds the location of the min delta V trajectory in the 3d plot created by loopOverOrbits
     minDeltaV = float('inf')
     minDVCoords = (0, 0)
     numOrbitSamples = len(grid)
@@ -109,12 +109,18 @@ def minCoords(grid, v1, v2, TOF_range): # Finds the location of the min delta V 
                 minDeltaV = currentDeltaV
                 minDVCoords = (coord1, coord2)
 
+    # Equilateral triangle guess of side length 2 (degrees) 
+    coord1, coord2 = minDVCoords
+    simplex0 = ((coord1, coord2 + 2), (coord1 + np.sqrt(3) / 2, coord2 - 1), (coord1 - np.sqrt(3) / 2, coord2 - 1)) 
+
     # IzzoParams must now convert from PF to ECI with TAs corresponding to coordinates of orbits instead.  
-    point1, point2, deltaV = NelderMead2d(minDVCoords(0), minDVCoords(1), Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams)) # Fix Nelder-Mead call (simplex)
+    minDVCoords, deltaV = NelderMead2d(simplex0, 
+        minDeltaV = lambda TAs: minDeltaV(TOF_range, (PFtoECIframe(orbit1params, TAs[0]), PFtoECIframe(orbit1params, TAs[1], Mmax, mu)))) 
 
-    return minDVCoords
+    return minDVCoords, deltaV
 
-def trajectoryParams(orbit1params, orbit2params, TA1, TA2, mu):
+def trajectoryParams(orbit1params, orbit2params, TAs, mu):
+    TA1, TA2 = TAs
     r1, v1 = PFtoECIframe(orbit1params, TA1)
     r2, v2 = PFtoECIframe(orbit2params, TA2)
     k = np.array([0, 0, 1])
@@ -139,7 +145,7 @@ def trajectoryParams(orbit1params, orbit2params, TA1, TA2, mu):
         return 2 * np.arctan(np.sqrt((1 - e) / (1 + e)) * tan(TA / 2))
 
 def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambertIzzo method. Used for Brent and Nelder-Mead
-    r1, r2, Mmax, mu = IzzoParams
+    r1, v1, r2, v2, Mmax, mu = IzzoParams
     vt1, v2t = lambertIzzoMethod(r1, r2, TOF, M, mu)
 
     for i in range(len(vt1)):
