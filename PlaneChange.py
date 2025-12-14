@@ -411,3 +411,19 @@ def test_function:
     Brenttestx2 = Brent1d(-1, 1, f = lambda x: np.sin(2 * x ** 2))
 
     print(Brenttestx2)
+
+    Brenttestx3 = Brent1d(4.5, 5.5, f = lambda x: np.tan(x - 5) ** 2)
+
+    # Nelder-Mead testing
+
+    simplex1 = ((80, 187), (75, 180), (85, 180))
+
+    NMtestx1 = NelderMead2d(simplex1, f = lambda x: np.sin(np.pi / 180 * (x - 80)) * np.cos(np.pi / 180 * (y - 90)))
+
+    simplex2 = ((37, 128), (32, 121), (42, 121))
+
+    NMtestx2 = NelderMead2d(simplex2, f = lambda x: (x - 37) ** 2 * (y - 121) * (y - 61) * (y - 181))
+
+    # Lambert Izzo Solver testing
+
+    lambertIzzoMethod()
