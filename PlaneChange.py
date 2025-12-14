@@ -242,7 +242,6 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
 
 # 1d Rootfinding Algorithms, used to find minimums or roots of functions for minimum delta V trajectory call stack
 
-# THESE BOTH CURRENTLY  ARE ONE ITERATION
 def Halley1d(xn, f, dfdx, d2fdx2, tol = 1e-5, max_steps = 10):
     # Use Householder iteration of order 2 (y_(n+1)) = y_n - (2f*f') / (2f'^2 - f*f'')
     xp = xn + 1e-4
@@ -377,3 +376,38 @@ def NelderMead2d(simplex, func, xtol = 1e-4, ftol = 1e-4, max_steps = 1000): # N
     
     func_array = sorted(func_array, key=lambda item: item[1])
     return func_array[0] # the minimum point and the corresponding value of the function
+
+def test_function:
+
+    # Halley and Householder tests
+
+    Halleytestx1 = Halley1d(1.5, f = lambda x: x ** 4 - 5 * x ** 3 + 5 * x ** 2 - 1, df = lambda x: 4 * x ** 3 - 15 * x ** 2 + 10 * x,
+        d2f = lambda x: 12 * x ** 2 - 30 * x + 10)
+    
+    print(Halleytestx1)
+    
+    Householdertestx1 = Householder1d(1.5, f = lambda x: x ** 4 - 5 * x ** 3 + 5 * x ** 2 - 1, df = lambda x: 4 * x ** 3 - 15 * x ** 2 + 10 * x,
+        d2f = lambda x: 12 * x ** 2 - 30 * x + 10, d3f = lambda x: 24 * x - 30)
+
+    print(Householdertestx1)
+
+    Halleytestx2 = Halley1d(-0.5, f = lambda x: np.sin(2 * x ** 2), df = lambda x: np.cos(2 * x ** 2) * 4 * x,
+        d2f = lambda x: -np.sin(2 * x ** 2) * 16 * x ** 2 + np.cos(2 * x ** 2) * 4)
+    
+    print(Halleytestx2)
+
+    Householdertestx2 = Householder1d(-0.5, f = lambda x: np.sin(2 * x ** 2), df = lambda x: np.cos(2 * x ** 2) * 4 * x,
+        d2f = lambda x: -np.sin(2 * x ** 2) * 16 * x ** 2 + np.cos(2 * x ** 2) * 4
+        d3f = lambda x: -np.cos(2 * x ** 2) * 64 * x ** 3 - np.sin(2 * x ** 2) * 32 * x - np.sin(2 * x ** 2) * 4)
+    
+    print(Householdertestx2)
+
+    # Brent testing
+
+    Brenttestx1 = Brent1d(0, 2, f = lambda x: x ** 4 - 5 * x ** 3 + 5 * x ** 2 - 1)
+
+    print(Brenttestx1)
+
+    Brenttestx2 = Brent1d(-1, 1, f = lambda x: np.sin(2 * x ** 2))
+
+    print(Brenttestx2)

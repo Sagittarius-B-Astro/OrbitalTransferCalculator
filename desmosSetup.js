@@ -173,5 +173,10 @@ function transferExpressions(transferType, params) {
       zmin: -1.1*r,
       zmax: 1.1*r
     });
+    calculator.setExpression({ id: 'r1a', latex: `r_{1a}=${params['r1a']}` });
+    calculator.setExpression({ id: 'r1p', latex: `r_{1p}=${params['r1p']}` });
+    calculator.setExpression({ id: 'r2a', latex: `r_{2a}=${params['r2a']}` });
+    calculator.setExpression({ id: 'r2p', latex: `r_{2p}=${params['r2p']}` });
+    calculator.setExpression({ id: 'Explanation', type: 'text', text: `\\eta=${params['A']}\\pi/180` });
   }
 }
