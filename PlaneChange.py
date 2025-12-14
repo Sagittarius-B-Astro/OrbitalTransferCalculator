@@ -1,7 +1,7 @@
 import numpy as np
 
 def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # Requires radii in m, not km!
-    TOF_range = findTOFrange(Mmax, (r1a + r1p)/2, (r2a + r2p)/2) # TOF range will be dependent on semi major axes
+    TOF_range = findTOFrange(Mmax, (r1a + r1p)/2, (r2a + r2p)/2, mu) # TOF range will be dependent on semi major axes
     # How do I choose an appropriate time range to sample and run Lambert problems on? Izzo's algorithm uses the TOF
     # to calculate the max revolutions (Mmax), and it feels questionable to use Mmax to get the range of TOFs. 
 
@@ -14,11 +14,11 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
     grid = loopOverOrbits(orbit1params, orbit2params, TOF_range, Mmax, mu)
     minDVCoords = minCoords(grid, orbit1params, orbit2params, TOF_range, Mmax, mu) # Returns minimum delta V point
     bestParams = trajectoryParams(orbit1params, orbit2params, minDVCoords, mu) # Returns best possible trajectory params for plotting
-    plotTrajectory(bestParams) # Placeholder
+    # plotTrajectory(bestParams) # Placeholder
 
-    return ans
+    return bestParams
 
-def findTOFrange(Mmax, a1, a2): # Gets appropriate TOF range depending on Mmax input. The first element is for M = 0, second is for M > 0
+def findTOFrange(Mmax, a1, a2, mu): # Gets appropriate TOF range depending on Mmax input. The first element is for M = 0, second is for M > 0
     TOFs = [(0, 0)] * 2
     TOrbitSmall, TOrbitBig = 2 * np.pi * np.sqrt(a1 ** 3 / mu), 2 * np.pi * np.sqrt(a2 ** 3 / mu)
     TOFsamples = 9 # Used for coarse sampling, may give user the option later
@@ -34,15 +34,15 @@ def loopOverOrbits(init, final, TOF_range, Mmax, mu): # Creates a grid of n = nu
     minDeltaVgrid = [[0] * numOrbitSamples for _ in range(numOrbitSamples)]
 
     for TA1 in TA_array:
-        r1, v1 = PFtoECIframe(init, TA1)
+        r1, v1 = PFtoECIframe(init, TA1, mu)
         for TA2 in TA_array:
-            r2, v2 = PFtoECIframe(final, TA2)
+            r2, v2 = PFtoECIframe(final, TA2, mu)
             IzzoParams = (r1, v1, r2, v2, Mmax, mu) # Everything needed for Izzo except TOF, passed separately to distinguish and because it's an array
             minDeltaVgrid[TA1][TA2] = minDeltaV(TOF_range, IzzoParams)
 
     return minDeltaVgrid
 
-def PFtoECIframe(params, TA): # Converts from PF frame to ECI frame
+def PFtoECIframe(params, TA, mu): # Converts from PF frame to ECI frame
     ra, rp, i, RAAN, w = params
     a = (ra + rp) / 2
     e = (ra - rp) / (ra + rp)
@@ -115,34 +115,38 @@ def minCoords(grid, init, final, TOF_range, Mmax, mu): # Finds the location of t
 
     # IzzoParams must now convert from PF to ECI with TAs corresponding to coordinates of orbits instead.  
     minDVCoords, deltaV = NelderMead2d(simplex0, 
-        minDeltaV = lambda TAs: minDeltaV(TOF_range, (PFtoECIframe(orbit1params, TAs[0]), PFtoECIframe(orbit1params, TAs[1], Mmax, mu)))) 
+        minDeltaV = lambda TAs: minDeltaV(TOF_range, (PFtoECIframe(init, TAs[0]), PFtoECIframe(final, TAs[1]), Mmax, mu))) 
 
     return minDVCoords, deltaV
 
 def trajectoryParams(orbit1params, orbit2params, TAs, mu):
-    TA1, TA2 = TAs
-    r1, v1 = PFtoECIframe(orbit1params, TA1)
-    r2, v2 = PFtoECIframe(orbit2params, TA2)
-    k = np.array([0, 0, 1])
 
-    E1, E2 = eccentricAnomaly(r1, v1), eccentricAnomaly(r2, v2)
-
-    rOrbitE = [x = lambda E: a * (np.cos(E) - e), y = lambda E: a * np.sqrt(1 - e ** 2) * np.sin(E), 0]
-
-    return rOrbitE, [E1, E2]
-
-    def eccentricAnomaly(r, v):
+    def eccentricAnomaly(r, v, TA):
         hv, h = np.cross(r, v), np.linalg.norm(hv)
         ev, e = ((np.linalg.norm(v) ** 2 - mu / np.linalg.norm(r)) * r1 - np.dot(r, v) * v) / mu, np.linalg.norm(ev)
         nv, n = np.cross(k, hv), np.linalg.norm(nv)
         a = (2 / np.linalg.norm(r) - np.linalg.norm(v) ** 2 / mu) ** -1
 
         i = np.arccos(hv[2] / h)
-        if nv[1] >= 0: RAAN = np.arccos(nv[0] / n) else RAAN = 2 * np.pi - np.arccos(nv[0]/n)
-        if ev[2] >= 0: w = np.arccos(np.dot(nv, ev) / (n * e)) else w = 2 * np.pi - np.arccos(np.dot(nv, ev) / (n * e))
-        if np.dot(r, v) >= 0: w = np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r))) else w = 2 * np.pi - np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r)))
+        if nv[1] >= 0: RAAN = np.arccos(nv[0] / n)
+        else: RAAN = 2 * np.pi - np.arccos(nv[0]/n)
+        if ev[2] >= 0: w = np.arccos(np.dot(nv, ev) / (n * e))
+        else: w = 2 * np.pi - np.arccos(np.dot(nv, ev) / (n * e))
+        if np.dot(r, v) >= 0: w = np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r))) 
+        else: w = 2 * np.pi - np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r)))
 
-        return 2 * np.arctan(np.sqrt((1 - e) / (1 + e)) * tan(TA / 2))
+        return (e, 2 * np.arctan(np.sqrt((1 - e) / (1 + e)) * np.tan(TA / 2)))
+    
+    TA1, TA2 = TAs
+    r1, v1 = PFtoECIframe(orbit1params, TA1)
+    r2, v2 = PFtoECIframe(orbit2params, TA2)
+    k = np.array([0, 0, 1])
+
+    (e1, E1), (e2, E2) = eccentricAnomaly(r1, v1, TA1), eccentricAnomaly(r2, v2, TA2)
+
+    rOrbitE = [x = lambda E: a * (np.cos(E) - e), y = lambda E: a * np.sqrt(1 - e ** 2) * np.sin(E), 0]
+
+    return rOrbitE, [E1, E2]
 
 def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambertIzzo method. Used for Brent and Nelder-Mead
     r1, v1, r2, v2, Mmax, mu = IzzoParams
@@ -155,34 +159,29 @@ def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambe
     return minDeltaV
 
 def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for solving Lambert's Problem, returns velocities instead of x, y
-    cvec = r2vec - r1vec
-    c, r1, r2 = np.linalg.norm(cvec), np.linalg.norm(r1vec), np.linalg.norm(r2vec)
-    s = (c + r1 + r2) / 2
-
-    r1unit, r2unit = r1vec / r1, r2vec / r2
-    hunit = np.cross(r1unit, r2unit), Lambda = np.sqrt(1 - c / s)
-
-    if (r1vec[0] * r2vec[1] - r1vec[1] * r2vec[0]) < 0:
-        Lambda = -Lambda
-        vt1unit, v2tunit = np.cross(r1unit, hunit), np.cross(r2unit, hunit)
-    else: vt1unit, v2tunit = np.cross(hunit, r1unit), np.cross(hunit, r2unit)
-
-    T = np.sqrt(2 * mu / s ** 3) * TOF # Seconds to dimensionless time
-    xSols, ySols = findxy(Lambda, T)
-    gamma, rho, sigma = np.sqrt(mu * s / 2), (r1 - r2) / c, np.sqrt(1 - rho ** 2) 
-
-    vt1, v2t = [], []
-
-    for x, y in xSols, ySols: # Gooding's method of converting x, y to velocities
-        Vr1, Vr2 = gamma * ((Lambda * y - x) - rho * (Lambda * y + x)) / r1, -gamma * ((Lambda * y - x) + rho * (Lambda * y + x)) / r2
-        Vt1, Vt2 = gamma * sigma * (y + Lambda * x) / r1, gamma * sigma * (y + Lambda * x) / r2
-        vt1vec, v2tvec = Vr1 * r1unit + Vt1 * vt1unit, Vr2 * r2unit + Vt2 * vt2unit
-        vt1.append(vt1vec)
-        vt2.append(v2tvec)
     
-    return vt1, v2t
-
     def findxy(Lambda, T): # Helper function for LambertIzzo solver, returns 2 * Mmax + 1 solutions
+        
+        def y(x): return np.sqrt(1 - Lambda ** 2 * (1 - x ** 2))
+
+        def TOF(x, M = Mmax):
+            if x == 1: return 2 / 3 * (1 - Lambda ** 3)
+            if x == 0: return np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2) + M * np.pi
+            y = y(x)
+            psi = np.arccos(x * y + Lambda * (1 - x ** 2))
+            return ((psi + M * pi) / np.sqrt(abs(1 - x ** 2)) - x + Lambda * y) / (1 - x ** 2)
+
+        def dTOFdx(x):
+            if x == 1: return 2 / 5 * (Lambda ** 5 - 1)
+            if x == 0: return -2
+            return ((3 * TOF(x) * x) - 2 + 2 * Lambda ** 3 * x / y(x)) / (1 - x ** 2)
+
+        def d2TOFdx2(x):
+            return ((3 * TOF(x) + 5 * x * dTOFdx(x) + 2 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 3)) / (1 - x ** 2)
+
+        def d3TOFdx3(x):
+            return ((7 * x * d2TOFdx2(x) + 8 * dTOFdx(x) - 6 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 5 * x)) / (1 - x ** 2)
+
         assert np.abs(Lambda) < 1 # Magnitude of lambda must be less than 1
         assert T > 0 # T must be more than 0. There was a typo in the paper
 
@@ -210,7 +209,7 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
         # Renamed variable because it's a little confusing on first glance and it also stores them in reverse with the exception of the M = 0 case.
         for M in range(1, Mmax + 1):
             x0l, x0r = (((M + 1) * np.pi / (8 * T)) ** (2 / 3) - 1) / (((M + 1) * np.pi / (8 * T)) ** (2 / 3) + 1), 
-                ((8 * T) / (M * np.pi) ** (2 / 3) - 1) / ((8 * T) / (M * np.pi) ** (2 / 3) + 1)
+            ((8 * T) / (M * np.pi) ** (2 / 3) - 1) / ((8 * T) / (M * np.pi) ** (2 / 3) + 1)
             xr, yr = Householder1d(x0l, TOFroot = lambda x: TOF(x, M) - T, dTOFdx, d2TOFdx2, d3TOFdx3), y(xr)
             xl, yl = Householder1d(x0r, TOFroot = lambda x: TOF(x, M) - T, dTOFdx, d2TOFdx2, d3TOFdx3), y(xl)
             solutions[2 * M - 1] = (xr, yr)
@@ -220,25 +219,32 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
         
         # TOF, y equations from Izzo's paper for Lambert Method
 
-        def y(x): return np.sqrt(1 - Lambda ** 2 * (1 - x ** 2))
+    cvec = r2vec - r1vec
+    c, r1, r2 = np.linalg.norm(cvec), np.linalg.norm(r1vec), np.linalg.norm(r2vec)
+    s = (c + r1 + r2) / 2
 
-        def TOF(x, M = Mmax):
-            if x == 1: return 2 / 3 * (1 - Lambda ** 3)
-            if x == 0: return np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2) + M * np.pi
-            y = y(x)
-            psi = np.arccos(x * y + Lambda * (1 - x ** 2))
-            return ((psi + M * pi) / np.sqrt(abs(1 - x ** 2)) - x + Lambda * y) / (1 - x ** 2)
+    r1unit, r2unit = r1vec / r1, r2vec / r2
+    hunit = np.cross(r1unit, r2unit), Lambda = np.sqrt(1 - c / s)
 
-        def dTOFdx(x):
-            if x == 1: return 2 / 5 * (Lambda ** 5 - 1)
-            if x == 0: return -2
-            return ((3 * TOF(x) * x) - 2 + 2 * Lambda ** 3 * x / y(x)) / (1 - x ** 2)
+    if (r1vec[0] * r2vec[1] - r1vec[1] * r2vec[0]) < 0:
+        Lambda = -Lambda
+        vt1unit, v2tunit = np.cross(r1unit, hunit), np.cross(r2unit, hunit)
+    else: vt1unit, v2tunit = np.cross(hunit, r1unit), np.cross(hunit, r2unit)
 
-        def d2TOFdx2(x):
-            return ((3 * TOF(x) + 5 * x * dTOFdx(x) + 2 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 3)) / (1 - x ** 2)
+    T = np.sqrt(2 * mu / s ** 3) * TOF # Seconds to dimensionless time
+    xSols, ySols = findxy(Lambda, T)
+    gamma, rho, sigma = np.sqrt(mu * s / 2), (r1 - r2) / c, np.sqrt(1 - rho ** 2) 
 
-        def d3TOFdx3(x):
-            return ((7 * x * d2TOFdx2(x) + 8 * dTOFdx(x) - 6 * (1 - Lambda ** 2) * (Lambda / y(x)) ** 5 * x)) / (1 - x ** 2)
+    vt1, v2t = [], []
+
+    for x, y in xSols, ySols: # Gooding's method of converting x, y to velocities
+        Vr1, Vr2 = gamma * ((Lambda * y - x) - rho * (Lambda * y + x)) / r1, -gamma * ((Lambda * y - x) + rho * (Lambda * y + x)) / r2
+        Vt1, Vt2 = gamma * sigma * (y + Lambda * x) / r1, gamma * sigma * (y + Lambda * x) / r2
+        vt1vec, v2tvec = Vr1 * r1unit + Vt1 * vt1unit, Vr2 * r2unit + Vt2 * v2tunit
+        vt1.append(vt1vec)
+        v2t.append(v2tvec)
+    
+    return vt1, v2t
 
 # 1d Rootfinding Algorithms, used to find minimums or roots of functions for minimum delta V trajectory call stack
 
@@ -377,7 +383,7 @@ def NelderMead2d(simplex, func, xtol = 1e-4, ftol = 1e-4, max_steps = 1000): # N
     func_array = sorted(func_array, key=lambda item: item[1])
     return func_array[0] # the minimum point and the corresponding value of the function
 
-def test_function:
+def test_function():
 
     # Halley and Householder tests
 
@@ -414,15 +420,22 @@ def test_function:
 
     Brenttestx3 = Brent1d(4.5, 5.5, f = lambda x: np.tan(x - 5) ** 2)
 
+    print(Brenttestx3)
+
     # Nelder-Mead testing
 
     simplex1 = ((80, 187), (75, 180), (85, 180))
 
     NMtestx1 = NelderMead2d(simplex1, f = lambda x: np.sin(np.pi / 180 * (x - 80)) * np.cos(np.pi / 180 * (y - 90)))
 
+    print(NMtestx1)
+
     simplex2 = ((37, 128), (32, 121), (42, 121))
 
     NMtestx2 = NelderMead2d(simplex2, f = lambda x: (x - 37) ** 2 * (y - 121) * (y - 61) * (y - 181))
+
+    print(NMtestx2)
+
 
     # Lambert Izzo Solver testing
 
