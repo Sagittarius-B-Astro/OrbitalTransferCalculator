@@ -13,8 +13,14 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
 
     grid = loopOverOrbits(orbit1params, orbit2params, TOF_range, Mmax, mu)
     minDVCoords = minCoords(grid, orbit1params, orbit2params, TOF_range, Mmax, mu) # Returns minimum delta V point
-    bestParams = trajectoryParams(orbit1params, orbit2params, minDVCoords, mu) # Returns best possible trajectory params for plotting
-    # plotTrajectory(bestParams) # Placeholder
+
+    # Returns best possible trajectory params for plotting in (a, e, i, RAAN, w, E1, E2) form
+
+    bestParams = trajectoryParams(orbit1params, orbit2params, minDVCoords, mu)
+    points = trajectoryPoints(bestParams)
+
+    # Plot Trajectory function would take a, e to get ellipse and i, RAAN, w to convert to ECI frame, looping from E1, E2
+    # plotTrajectory(points) # Placeholder
 
     return bestParams
 
@@ -121,7 +127,7 @@ def minCoords(grid, init, final, TOF_range, Mmax, mu): # Finds the location of t
 
 def trajectoryParams(orbit1params, orbit2params, TAs, mu):
 
-    def eccentricAnomaly(r, v, TA):
+    def eccentricAnomaly(r, v, TA1, TA2):
         hv, h = np.cross(r, v), np.linalg.norm(hv)
         ev, e = ((np.linalg.norm(v) ** 2 - mu / np.linalg.norm(r)) * r1 - np.dot(r, v) * v) / mu, np.linalg.norm(ev)
         nv, n = np.cross(k, hv), np.linalg.norm(nv)
@@ -129,24 +135,30 @@ def trajectoryParams(orbit1params, orbit2params, TAs, mu):
 
         i = np.arccos(hv[2] / h)
         if nv[1] >= 0: RAAN = np.arccos(nv[0] / n)
-        else: RAAN = 2 * np.pi - np.arccos(nv[0]/n)
+        else: RAAN = 2 * np.pi - np.arccos(nv[0] / n)
         if ev[2] >= 0: w = np.arccos(np.dot(nv, ev) / (n * e))
         else: w = 2 * np.pi - np.arccos(np.dot(nv, ev) / (n * e))
         if np.dot(r, v) >= 0: w = np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r))) 
         else: w = 2 * np.pi - np.arccos(np.dot(ev, r) / (e * np.linalg.norm(r)))
 
-        return (e, 2 * np.arctan(np.sqrt((1 - e) / (1 + e)) * np.tan(TA / 2)))
+        E1 = 2 * np.arctan(np.sqrt((1 - e) / (1 + e)) * np.tan(TA1 / 2))
+        E2 = 2 * np.arctan(np.sqrt((1 - e) / (1 + e)) * np.tan(TA2 / 2))
+
+        return (a, e, i, RAAN, w, E1, E2)
     
     TA1, TA2 = TAs
     r1, v1 = PFtoECIframe(orbit1params, TA1)
     r2, v2 = PFtoECIframe(orbit2params, TA2)
     k = np.array([0, 0, 1])
 
-    (e1, E1), (e2, E2) = eccentricAnomaly(r1, v1, TA1), eccentricAnomaly(r2, v2, TA2)
+    return eccentricAnomaly(r1, v1, TA1, TA2)
 
-    rOrbitE = [x = lambda E: a * (np.cos(E) - e), y = lambda E: a * np.sqrt(1 - e ** 2) * np.sin(E), 0]
+def trajectoryPoints(params):
+    a, e, i, RAAN, w, E1, E2 = params
+    point = []
 
-    return rOrbitE, [E1, E2]
+    for E in range(E1, E2):
+        point.append()
 
 def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambertIzzo method. Used for Brent and Nelder-Mead
     r1, v1, r2, v2, Mmax, mu = IzzoParams
