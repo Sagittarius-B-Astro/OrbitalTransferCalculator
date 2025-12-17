@@ -14,10 +14,9 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
     grid = loopOverOrbits(orbit1params, orbit2params, TOF_range, Mmax, mu)
     minDVCoords = minCoords(grid, orbit1params, orbit2params, TOF_range, Mmax, mu) # Returns minimum delta V point
 
-    # Returns best possible trajectory params for plotting in (a, e, i, RAAN, w, E1, E2) form
+    # Returns the trajectory of the curve in parametrized form
 
-    bestParams = trajectoryParams(orbit1params, orbit2params, minDVCoords, mu)
-    points = trajectoryPoints(bestParams)
+    bestParams = trajectoryCurve(lambertIzzoMinimizer(), minDVCoords, mu)
 
     # Plot Trajectory function would take a, e to get ellipse and i, RAAN, w to convert to ECI frame, looping from E1, E2
     # plotTrajectory(points) # Placeholder
@@ -98,7 +97,8 @@ def minDeltaV(TOF_range, IzzoParams): # Determines the minimum delta V trajector
                     minDeltaVTOFleft, minDeltaVTOFright = TOFs[TOFi - 1], TOFs[TOFi + 1]
 
         # Figure out how to call lambertIzzo so that it's minimizable; should return minimum delta V, not two arrays
-        minDeltaV = Brent1d(minDeltaVTOFleft, minDeltaVTOFright, Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams))
+        # Brent is not a minimizer, it's a root finding function
+        minDeltaVTOF = Brent1d(minDeltaVTOFleft, minDeltaVTOFright, Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams)[0])
 
     return minDeltaV
 
@@ -125,11 +125,11 @@ def minCoords(grid, init, final, TOF_range, Mmax, mu): # Finds the location of t
 
     return minDVCoords, deltaV
 
-def trajectoryParams(orbit1params, orbit2params, TAs, mu):
+def trajectoryCurve(bestTrajectory, TAs, mu):
 
     def eccentricAnomaly(r, v, TA1, TA2):
         hv, h = np.cross(r, v), np.linalg.norm(hv)
-        ev, e = ((np.linalg.norm(v) ** 2 - mu / np.linalg.norm(r)) * r1 - np.dot(r, v) * v) / mu, np.linalg.norm(ev)
+        ev, e = ((np.linalg.norm(v) ** 2 - mu / np.linalg.norm(r)) * r - np.dot(r, v) * v) / mu, np.linalg.norm(ev)
         nv, n = np.cross(k, hv), np.linalg.norm(nv)
         a = (2 / np.linalg.norm(r) - np.linalg.norm(v) ** 2 / mu) ** -1
 
@@ -147,28 +147,27 @@ def trajectoryParams(orbit1params, orbit2params, TAs, mu):
         return (a, e, i, RAAN, w, E1, E2)
     
     TA1, TA2 = TAs
-    r1, v1 = PFtoECIframe(orbit1params, TA1)
-    r2, v2 = PFtoECIframe(orbit2params, TA2)
+    r, v = bestTrajectory
     k = np.array([0, 0, 1])
+    a, e, i, RAAN, w, E1, E2 = eccentricAnomaly(r, v, TA1, TA2)
 
-    return eccentricAnomaly(r1, v1, TA1, TA2)
+    parametrizedCurve = [lambda E: a * ((np.cos(E) - e) * (np.cos(RAAN)))]
 
-def trajectoryPoints(params):
-    a, e, i, RAAN, w, E1, E2 = params
-    point = []
-
-    for E in range(E1, E2):
-        point.append()
+    return parametrizedCurve, [E1, E2]
 
 def lambertIzzoMinimizer(TOF, IzzoParams): # Finds the minimum solution to lambertIzzo method. Used for Brent and Nelder-Mead
     r1, v1, r2, v2, Mmax, mu = IzzoParams
-    vt1, v2t = lambertIzzoMethod(r1, r2, TOF, M, mu)
+    vt1, v2t = lambertIzzoMethod(r1, r2, TOF, Mmax, mu)
+    minDeltaV = float('inf')
+    bestTransfer = (vt1[0], v2t[0])
 
     for i in range(len(vt1)):
         currentDeltaV = np.abs(v2 - v2t[i]) + np.abs(vt1[i] - v1)
-        minDeltaV = min(currentDeltaV, minDeltaV)
+        if currentDeltaV < minDeltaV:
+            minDeltaV = currentDeltaV
+            bestTransfer = (vt1[i], v2t[i])
 
-    return minDeltaV
+    return [minDeltaV, bestTransfer]
 
 def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for solving Lambert's Problem, returns velocities instead of x, y
     
@@ -181,7 +180,7 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
             if x == 0: return np.arccos(Lambda) + Lambda * np.sqrt(1 - Lambda ** 2) + M * np.pi
             y = y(x)
             psi = np.arccos(x * y + Lambda * (1 - x ** 2))
-            return ((psi + M * pi) / np.sqrt(abs(1 - x ** 2)) - x + Lambda * y) / (1 - x ** 2)
+            return ((psi + M * np.pi) / np.sqrt(abs(1 - x ** 2)) - x + Lambda * y) / (1 - x ** 2)
 
         def dTOFdx(x):
             if x == 1: return 2 / 5 * (Lambda ** 5 - 1)
@@ -210,6 +209,7 @@ def lambertIzzoMethod(r1vec, r2vec, TOF, revolutions, mu): # Izzo's method for s
                 Mmax -= 1
 
         T1 = TOF(1)
+        T0 = TOF(0)
 
         if T >= T0: x0 = (T0 / T) ** (2 / 3) - 1
         elif T < T1: x0 = 5 / 2 * T1 * (T1 - T) / (T * (1 - Lambda ** 5)) - 1
@@ -302,7 +302,7 @@ def Brent1d(a, b, func, tol = 1e-5, max_steps = 1000): # Brent's bracketing meth
             s = (a * fb * fc) / ((fa - fb) * (fa - fc)) + (b * fa * fc) / ((fb - fa) * (fb - fc)) + (c * fa * fb) / ((fc - fa) * (fc - fb))
         else: s = b - fb * (b - a) / (fb - fa)
 
-        if (((s - (3 * a + b) / 4) * (s - b)) > 0) or (mflag and np.abs(s - b) >= np.abs(b - c) / 2) or (not mflag and np.abs(s - b) >= np.abs(c - d) / 2) or 
+        if (((s - (3 * a + b) / 4) * (s - b)) > 0) or (mflag and np.abs(s - b) >= np.abs(b - c) / 2) or (not mflag and np.abs(s - b) >= np.abs(c - d) / 2) or \
             (mflag and np.abs(b - c) < np.abs(tol)) or (not mflag and np.abs(c - d) < np.abs(tol)): 
             s = (a + b) / 2
             mflag = True
@@ -415,7 +415,7 @@ def test_function():
     print(Halleytestx2)
 
     Householdertestx2 = Householder1d(-0.5, f = lambda x: np.sin(2 * x ** 2), df = lambda x: np.cos(2 * x ** 2) * 4 * x,
-        d2f = lambda x: -np.sin(2 * x ** 2) * 16 * x ** 2 + np.cos(2 * x ** 2) * 4
+        d2f = lambda x: -np.sin(2 * x ** 2) * 16 * x ** 2 + np.cos(2 * x ** 2) * 4, 
         d3f = lambda x: -np.cos(2 * x ** 2) * 64 * x ** 3 - np.sin(2 * x ** 2) * 32 * x - np.sin(2 * x ** 2) * 4)
     
     print(Householdertestx2)
@@ -438,16 +438,15 @@ def test_function():
 
     simplex1 = ((80, 187), (75, 180), (85, 180))
 
-    NMtestx1 = NelderMead2d(simplex1, f = lambda x: np.sin(np.pi / 180 * (x - 80)) * np.cos(np.pi / 180 * (y - 90)))
+    NMtestx1 = NelderMead2d(simplex1, f = lambda x, y: np.sin(np.pi / 180 * (x - 80)) * np.cos(np.pi / 180 * (y - 90)))
 
     print(NMtestx1)
 
     simplex2 = ((37, 128), (32, 121), (42, 121))
 
-    NMtestx2 = NelderMead2d(simplex2, f = lambda x: (x - 37) ** 2 * (y - 121) * (y - 61) * (y - 181))
+    NMtestx2 = NelderMead2d(simplex2, f = lambda x, y: (x - 37) ** 2 * (y - 121) * (y - 61) * (y - 181))
 
     print(NMtestx2)
-
 
     # Lambert Izzo Solver testing
 
