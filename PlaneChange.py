@@ -99,6 +99,7 @@ def minDeltaV(TOF_range, IzzoParams): # Determines the minimum delta V trajector
         # Figure out how to call lambertIzzo so that it's minimizable; should return minimum delta V, not two arrays
         # Brent is not a minimizer, it's a root finding function
         minDeltaVTOF = Brent1d(minDeltaVTOFleft, minDeltaVTOFright, Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams)[0])
+        minDeltaV = lambertIzzoMinimizer(minDeltaVTOF, IzzoParams)[0]
 
     return minDeltaV
 
