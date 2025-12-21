@@ -101,7 +101,7 @@ def minDeltaV(TOF_range, IzzoParams): # Determines the minimum delta V trajector
         minDeltaVTOF = Brent1d(minDeltaVTOFleft, minDeltaVTOFright, Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams)[0])
         minDeltaV = lambertIzzoMinimizer(minDeltaVTOF, IzzoParams)[0]
 
-    return minDeltaV
+    return minDeltaV # Shoudl returns the values necessary to calculate minimum trajectory
 
 def minCoords(grid, init, final, TOF_range, Mmax, mu): # Finds the location of the min delta V trajectory in the 3d plot created by loopOverOrbits
     minDeltaV = float('inf')
