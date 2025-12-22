@@ -5,7 +5,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
     # How do I choose an appropriate time range to sample and run Lambert problems on? Izzo's algorithm uses the TOF
     # to calculate the max revolutions (Mmax), and it feels questionable to use Mmax to get the range of TOFs. 
 
-    # Upon reflection, thsi seems alright, but the following two distinctions should be made: 1) the Mmax given by the user is 
+    # Upon reflection, this seems alright, but the following two distinctions should be made: 1) the Mmax given by the user is 
     # not the same as Mmax in findxy, and 2) I should verify that the Mmax calculated in findxy should never exceed the user input.
 
     orbit1params = (r1a, r1p, i1, RAAN1, w1)
@@ -16,7 +16,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
 
     # Returns the trajectory of the curve in parametrized form
     
-    bestParams = trajectoryCurve(lambertIzzoMinimizer(), minDVCoords, mu)
+    bestParams = trajectoryCurve(lambertIzzoMinimizer(minDeltaV()), minDVCoords, mu)
 
     # Plot Trajectory function would take a, e to get ellipse and i, RAAN, w to convert to ECI frame, looping from E1, E2
     # plotTrajectory(points) # Placeholder
@@ -43,7 +43,7 @@ def loopOverOrbits(init, final, TOF_range, Mmax, mu): # Creates a grid of n = nu
         for TA2 in TA_array:
             r2, v2 = PFtoECIframe(final, TA2, mu)
             IzzoParams = (r1, v1, r2, v2, Mmax, mu) # Everything needed for Izzo except TOF, passed separately to distinguish and because it's an array
-            minDeltaVgrid[TA1][TA2] = minDeltaV(TOF_range, IzzoParams)
+            minDeltaVgrid[TA1][TA2] = minDeltaV(TOF_range, IzzoParams)[0]
 
     return minDeltaVgrid
 
@@ -101,7 +101,7 @@ def minDeltaV(TOF_range, IzzoParams): # Determines the minimum delta V trajector
         minDeltaVTOF = Brent1d(minDeltaVTOFleft, minDeltaVTOFright, Izzo = lambda TOF: lambertIzzoMinimizer(TOF, IzzoParams)[0])
         minDeltaV = lambertIzzoMinimizer(minDeltaVTOF, IzzoParams)[0]
 
-    return minDeltaV # Shoudl returns the values necessary to calculate minimum trajectory
+    return minDeltaV, minDeltaVTOF # Shoudl returns the values necessary to calculate minimum trajectory
 
 def minCoords(grid, init, final, TOF_range, Mmax, mu): # Finds the location of the min delta V trajectory in the 3d plot created by loopOverOrbits
     minDeltaV = float('inf')
