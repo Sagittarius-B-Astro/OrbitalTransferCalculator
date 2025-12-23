@@ -16,7 +16,7 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
 
     # Returns the trajectory of the curve in parametrized form
     
-    bestParams = trajectoryCurve(lambertIzzoMinimizer(minDeltaV()), minDVCoords, mu)
+    bestParams = trajectoryCurve(lambertIzzoMinimizer(minDeltaV(minTOF, orbitparams)), minDVCoords, mu)
 
     # Plot Trajectory function would take a, e to get ellipse and i, RAAN, w to convert to ECI frame, looping from E1, E2
     # plotTrajectory(points) # Placeholder
@@ -450,5 +450,6 @@ def test_function():
     print(NMtestx2)
 
     # Lambert Izzo Solver testing
+
 
     lambertIzzoMethod()
