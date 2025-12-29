@@ -15,7 +15,8 @@ def PlaneChange(r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2, Mmax, mu): # R
     minDVCoords = minCoords(grid, orbit1params, orbit2params, TOF_range, Mmax, mu) # Returns minimum delta V point
 
     # Returns the trajectory of the curve in parametrized form
-    
+
+    # Update to properly reflect change in parameters
     bestParams = trajectoryCurve(lambertIzzoMinimizer(minDeltaV(minTOF, orbitparams)), minDVCoords, mu)
 
     # Plot Trajectory function would take a, e to get ellipse and i, RAAN, w to convert to ECI frame, looping from E1, E2
@@ -453,3 +454,4 @@ def test_function():
 
 
     lambertIzzoMethod()
+
