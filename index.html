@@ -6,8 +6,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="OTCstyle.css">
     <link href='https://fonts.googleapis.com/css?family=Space Mono' rel='stylesheet'>
-    <script src="https://unpkg.com/mathjs@15.1.0/lib/browser/math.js"></script>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.0/full/pyodide.js"></script>
     <title>Orbital Transfer Calculator</title>
   </head>
   <body>
@@ -25,7 +23,7 @@
             <option value="bielliptic">Bi-elliptic Hohmann Transfer</option>
             <option value="commonApse">Common Apse Line Transfer</option>
             <option value="apseRotate">Apse Line Rotation</option>
-            <option value="planeChange">Plane Change, (coming soon)</option>
+            <option value="planeChange">Plane Change (experimental)</option>
           </select>
         </div>
         <div class="parametersCommon">
@@ -40,17 +38,15 @@
           <h4>Calculate Δv</h4>
         </button>
         <div class="infobox" id="infobox"></div>
-      </div>  
+      </div>
       <div class="rightscreen">
         <div class="desmosPlot">
           <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=4154938d5d4a4139bfb32b60db31eb2e"></script>
           <div id="calculator"></div>
-        </div>  
+        </div>
       </div>
     </div>
-    <script src="static.js"></script>
-    <script src="orbitMath.js"></script>
-    <script src="desmosSetup.js"></script>
-    <script src="PlaneChange.js"></script>
+    <!-- ES modules are deferred, so Desmos (classic script above) is loaded first. -->
+    <script type="module" src="src/main.js"></script>
   </body>
 </html>
