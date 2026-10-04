@@ -1,23 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Orbital Transfer Calculator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="OTCstyle.css">
-    <link href='https://fonts.googleapis.com/css?family=Space Mono' rel='stylesheet'>
-    <title>Orbital Transfer Calculator</title>
+    <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=4154938d5d4a4139bfb32b60db31eb2e"></script>
   </head>
   <body>
     <header class="top-container">
       <h1>Orbital Transfer Calculator</h1>
+      <p class="tagline">Hohmann · Bi-elliptic · Apse-line · Plane-change transfers, visualized in 3D</p>
     </header>
-    <div class="mainscreen">
-      <div class="leftscreen">
+
+    <main class="mainscreen">
+      <section class="panel leftscreen" aria-label="Transfer inputs">
         <div class="transfer">
-          <label for="transferType">
-            <h3>Transfer Type:</h3>
-          </label>
+          <label for="transferType">Transfer type</label>
           <select id="transferType" name="transferType">
             <option value="hohmann">Hohmann Transfer</option>
             <option value="bielliptic">Bi-elliptic Hohmann Transfer</option>
@@ -26,27 +28,44 @@
             <option value="planeChange">Plane Change (experimental)</option>
           </select>
         </div>
+
         <div class="parametersCommon">
-          <h3>Celestial Object Parameters</h3>
-          <label for="mass">Mass of Object (kg):</label>
-          <input type="number" id="mass" name="mass"><br>
-          <label for="object_radius">Radius of Object (km):</label>
-          <input type="number" id="object_radius" name="object_radius"><br>
+          <h3>Celestial object</h3>
+          <div>
+            <div class="field">
+              <label for="mass">Mass (kg)</label>
+              <input type="number" id="mass" name="mass" placeholder="Earth: 5.972e24" step="any">
+            </div>
+            <div class="field">
+              <label for="object_radius">Radius (km)</label>
+              <input type="number" id="object_radius" name="object_radius" placeholder="Earth: 6378" step="any">
+            </div>
+          </div>
         </div>
+
         <div class="parametersDynamic"></div>
-        <button id="calculateBtn">
-          <h4>Calculate Δv</h4>
-        </button>
-        <div class="infobox" id="infobox"></div>
-      </div>
-      <div class="rightscreen">
+
+        <button id="calculateBtn" type="button">Calculate Δv</button>
+        <div class="infobox" id="infobox" aria-live="polite"></div>
+      </section>
+
+      <section class="panel rightscreen" aria-label="3D trajectory">
+        <div class="plot-head">
+          <h3>3D trajectory</h3>
+          <div class="legend">
+            <span style="--c: var(--c-initial)"><i></i>Initial orbit</span>
+            <span style="--c: var(--c-target)"><i></i>Target orbit</span>
+            <span style="--c: var(--c-transfer)"><i></i>Transfer</span>
+            <span style="--c: var(--c-planet)"><i class="dot"></i>Planet</span>
+          </div>
+        </div>
         <div class="desmosPlot">
-          <script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=4154938d5d4a4139bfb32b60db31eb2e"></script>
           <div id="calculator"></div>
         </div>
-      </div>
-    </div>
-    <!-- ES modules are deferred, so Desmos (classic script above) is loaded first. -->
+      </section>
+    </main>
+
+    <!-- ES modules are deferred, so the Desmos <script> in <head> is guaranteed to have run first. -->
     <script type="module" src="src/main.js"></script>
   </body>
 </html>

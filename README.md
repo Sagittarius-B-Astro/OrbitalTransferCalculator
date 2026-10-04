@@ -26,7 +26,8 @@ npm test            # = node --test tests/js/*.test.js  &&  python3 -m pytest -q
 ## Repository layout
 
 ```
-index.html, OTCstyle.css         page + styling (script tags reduced to one ES-module entry)
+index.html                       page markup (Desmos script in <head>, one ES-module entry point)
+OTCstyle.css                     'mission control' theme: CSS grid layout, glass panels, sticky 3-D plot, responsive
 src/
   main.js                        entry point: DOM wiring only
   math/                          pure functions, no DOM  (unit-tested in Node)

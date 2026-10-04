@@ -1,0 +1,295 @@
+/* Orbital Transfer Calculator - "mission control" theme.
+   Keeps the original navy -> sky-blue horizon palette and Space Mono, rebuilt on CSS grid so the
+   Desmos plot always has a real size (no fixed 250px margins / 70vh heights). */
+
+:root {
+  --bg-deep: #040a1c;
+  --bg-mid: #0a1f44;
+  --bg-glow: #1d4e89;
+  --horizon: #87cefa;
+  --panel: rgba(10, 28, 62, 0.58);
+  --panel-solid: #0b1d3f;
+  --line: rgba(135, 206, 250, 0.26);
+  --line-strong: rgba(135, 206, 250, 0.55);
+  --text: #e9f2ff;
+  --muted: #9fb8da;
+  --accent: #5dade2;
+  /* these three match the colors drawn in src/plot/desmos.js */
+  --c-initial: #00ccff;
+  --c-target: #ff6600;
+  --c-transfer: #00ff88;
+  --c-planet: #88aaff;
+  --radius: 16px;
+  --mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --display: 'Space Grotesk', 'Space Mono', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { min-height: 100%; background: var(--bg-deep); }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  background:
+    radial-gradient(120% 55% at 50% 118%, rgba(135, 206, 250, 0.42) 0%, rgba(29, 78, 137, 0.35) 38%, transparent 70%),
+    linear-gradient(to bottom, var(--bg-deep) 0%, var(--bg-mid) 55%, #123a6b 100%);
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* faint starfield (pure CSS, no assets) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(1.2px 1.2px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 27% 62%, #cfe6ff 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 41% 9%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 58% 34%, #cfe6ff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 73% 14%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 86% 47%, #cfe6ff 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 93% 8%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 5% 80%, #cfe6ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 66% 72%, #fff 50%, transparent 51%);
+  opacity: 0.7;
+}
+
+body > * { position: relative; z-index: 1; }
+
+/* ---------- header ---------- */
+.top-container {
+  text-align: center;
+  padding: clamp(20px, 4vh, 40px) 16px clamp(14px, 2.5vh, 24px);
+}
+
+.top-container h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 3.6vw, 2.6rem);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 24px rgba(93, 173, 226, 0.55);
+}
+
+.tagline {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- layout ---------- */
+.mainscreen {
+  display: grid;
+  grid-template-columns: minmax(340px, 460px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding: 0 clamp(14px, 3vw, 40px) 32px;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.leftscreen { display: flex; flex-direction: column; gap: 18px; }
+
+/* the plot stays in view while the (long) parameter form scrolls */
+.rightscreen {
+  position: sticky;
+  top: 16px;
+  height: calc(100vh - 150px);   /* fits the first screen below the header; stays sticky while the form scrolls */
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- form ---------- */
+h3 {
+  margin: 0 0 10px;
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--horizon);
+}
+
+.transfer label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--horizon);
+}
+
+.parametersCommon > div,
+.parametersDynamic {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.parametersDynamic > h3 { grid-column: 1 / -1; margin-bottom: 0; }
+
+.group-title {
+  grid-column: 1 / -1;
+  margin: 6px 0 -2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-family: var(--display);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.parametersDynamic:empty { display: none; }
+
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+
+.field label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.25;
+  min-height: 2.5em;            /* keeps paired inputs aligned when one label wraps ... */
+  display: flex;
+  align-items: flex-end;        /* ... while single-line labels still sit right above their input */
+}
+
+.parametersCommon .field label { min-height: 0; }   /* single-line labels: no reserved space */
+
+input[type='number'],
+select {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: rgba(4, 10, 28, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 11px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+select { cursor: pointer; }
+select option { background: var(--panel-solid); color: var(--text); }
+
+input::placeholder { color: rgba(159, 184, 218, 0.45); }
+
+input:hover, select:hover { border-color: var(--line-strong); }
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: none;
+  border-color: var(--horizon);
+  box-shadow: 0 0 0 3px rgba(135, 206, 250, 0.28);
+}
+
+button {
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff;
+  cursor: pointer;
+  padding: 13px 16px;
+  border: 1px solid var(--horizon);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1d4e89 0%, #2a6ab0 100%);
+  box-shadow: 0 6px 20px rgba(29, 78, 137, 0.55);
+  transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+}
+
+button:hover { filter: brightness(1.15); box-shadow: 0 8px 26px rgba(42, 106, 176, 0.7); }
+button:active { transform: translateY(1px); }
+
+/* ---------- results ---------- */
+.infobox {
+  min-height: 96px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--c-transfer);
+  background: rgba(4, 10, 28, 0.5);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.infobox:empty::before {
+  content: 'Results will appear here after you press Calculate.';
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.infobox h3 { margin-bottom: 8px; color: var(--c-transfer); }
+
+/* ---------- plot ---------- */
+.plot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.plot-head h3 { margin: 0; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.74rem; color: var(--muted); }
+
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.legend i {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--c);
+  box-shadow: 0 0 8px var(--c);
+}
+
+.legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+
+.desmosPlot {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  overflow: hidden;
+  background: #fff;             /* Desmos draws on white; keeps axes readable */
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.4);
+}
+
+#calculator { position: absolute; inset: 0; }
+
+/* ---------- small screens ---------- */
+@media (max-width: 1000px) {
+  .mainscreen { grid-template-columns: minmax(0, 1fr); }
+  .rightscreen { position: static; height: 70vh; min-height: 420px; }
+}
+
+@media (max-width: 480px) {
+  .parametersCommon > div, .parametersDynamic { grid-template-columns: minmax(0, 1fr); }
+  .field label { min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
