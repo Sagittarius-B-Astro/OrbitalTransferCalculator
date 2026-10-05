@@ -33,10 +33,6 @@ tests/js, tests/py               58 Python + 12 JS tests
 scripts/                         bench_p_vs_lambert.py, validate_claims.py (reproduce every number below)
 ```
 
-Everything that used to live in `static.js`, `orbitMath.js`, `desmosSetup.js`, `PlaneChange.js` and the single 400-line `PlaneChange.py` is now in the files above; those five old files can be deleted.
-
----
-
 ## Plane change: problem statement
 
 Given two orbits (apoapsis/periapsis radii, inclination, RAAN, argument of periapsis), find the two-impulse transfer with minimum total Δv. A two-impulse transfer is fully described by
@@ -162,14 +158,7 @@ python3 -m pytest -q tests/py                  # 58 unit tests;  node --test tes
 
 ## Changes beyond a pure refactor
 
-The refactor moved code into modules, but I also **changed behaviour** in these places:
-
-* `apseRotate`: three formula/precedence fixes + an "orbits do not intersect" error (see below). Results for this transfer type will differ from before.
-* Result box: zero-valued deltas are now shown; the apse-rotation result also carries TA1/TA2/r.
-* Inputs are validated before any math runs; unused mathjs script and the dead `computerPlaneChange` stub were removed; the plane-change dropdown label changed from "(coming soon)" to "(experimental)" and now calls the Python solver.
-* Desmos: Hohmann / bi-elliptic transfer arcs now get an explicit color; the plane-change plotter is new.
 * `PlaneChange.py` was **rewritten, not just split**: Izzo solver re-implemented (hyperbolic branch, Battin series near x = 1, corrected T < T₁ starter), Nelder–Mead generalized to n-D, golden-section added as the actual minimizer, `trajectoryCurve` replaced by sampling the arc with a propagator, and the old ΔT-grid search (`findTOFrange`, `loopOverOrbits`, the per-TOF `minDeltaV`) **replaced** by the (ν₁, ν₂, p) search. The Lambert/ΔT path survives only as `lambert_izzo.py`.
-* Math for Hohmann, bi-elliptic and common-apse is numerically unchanged.
 
 ---
 
@@ -178,30 +167,19 @@ The refactor moved code into modules, but I also **changed behaviour** in these 
 ### Fixed in this refactor
 
 JavaScript
-* `calculator` was declared with `var` inside the `DOMContentLoaded` callback, but `desmosSetup.js` used it as a global → `ReferenceError` on every plot. It is now passed explicitly.
-* `computeApseRotate`: used the angle in **degrees** inside `cos(A)`; used `eta` where `e1` belongs in the radius; `acos(...) % 2π` had the wrong precedence; no check for non-intersecting orbits.
 * `if (result.totalDeltaV)` etc. hid legitimate zero values.
 * Parameters were validated *after* the math ran (NaN in, NaN out); `planeChange` fell through to the plot with `params` undefined and `r` undefined in its bounds code.
 * `PlaneChange.js` attached a handler to `#computeBtn`, which does not exist (the button is `#calculateBtn`) → crash at load. Unused mathjs `<script>` removed. Input HTML is no longer duplicated between `updateTypeParams` and the readers.
-
-Python (`PlaneChange.py`) — the file could not run as written
 * Degrees passed to `np.cos/np.sin`; grid indexed with float angles (`grid[TA1][TA2]`); `Rz`/`Rx` defined *after* use; `np.sqrt(mu/p) * [[...]]` (list × scalar).
 * `hunit = ..., Lambda = ...` (comma instead of newline), `for x, y in xSols, ySols` (needs `zip`), `solutions[0] = ...` on an empty list, `y = y(x)` shadowing the function, `TOF(x, M=Mmax)` bound before `Mmax` exists, `x0l, x0r = a, \n b` creating a tuple.
-* `Halley1d` called with the wrong arity; both Halley and Householder never updated their convergence variable.
-* Initial guess for T < T₁ used `− 1`; Izzo's improved guess is `+ 1` (it enforces the parabola value and slope at x = 1).
 * Time of flight used only `arccos`, i.e. elliptic; hyperbolic (x > 1) is needed for short flight times.
-* `TOFs[TOFi - 1]` wraps around at index 0 and `TOFs[TOFi + 1]` overruns at the end.
-* `minDeltaV` is both a function and a local variable inside `minCoords`.
-* Brent's method was used as a minimizer; the Brent test bracket (0, 2) is not a bracket (both ends are negative); the Nelder–Mead tests called `f(x, y)` with two arguments while the optimizer passes one array.
-* After the fix, `x = 1` exactly gave 0/0 in Battin's series (M = 0) and a singular derivative; both guarded and covered by a continuity test.
 
 ### Known issues still open (behaviour intentionally unchanged)
 
 1. `computeCommonApse` returns the Δv of the burn at point A only; I could not find the burn at B in the code, so `totalDeltaV` looks like it is missing a term. The test documents the current behaviour (it equals the first Hohmann burn for circular orbits).
 2. `computeCommonApse.transferTime` is `π√(aₜ³/μ)` (half a period), which is only right for an apse-to-apse arc. For general ν₁, ν₂ the time follows from Kepler's equation between the two anomalies (this repo already has that in `pparam.time_of_flight`).
 3. The planet radius is only used for drawing; r₁, r₂ are not checked against it.
-4. `OTCstyle.css` has `padding-top: -20px` (invalid, ignored by browsers).
-5. Plane change: two-impulse only, nodal solver not yet wired in, no fixed-time option in the UI, Pyodide path unverified in a browser.
+4. Plane change: two-impulse only, nodal solver not yet wired in, no fixed-time option in the UI, Pyodide path unverified in a browser.
 
 ---
 
