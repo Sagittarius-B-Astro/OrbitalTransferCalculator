@@ -7,27 +7,11 @@ Calculates and visualizes the orbital transfers from Astronautics: Hohmann, bi-e
 
 > **Status of plane change:** the solver is implemented and verified natively (Python 3.12 + numpy, see [Verification](#verification)). The Pyodide wiring and the Desmos arc plot have **not yet been exercised in a browser** — treat that path as experimental.
 
----
-
-## Running it
-
-ES modules and `fetch` need http, not `file://`:
-
-```bash
-python3 -m http.server 8000      # then open http://localhost:8000
-```
-
-Tests (Node ≥ 18, Python ≥ 3.9, `pip install numpy pytest`):
-
-```bash
-npm test            # = node --test tests/js/*.test.js  &&  python3 -m pytest -q tests/py
-```
-
 ## Repository layout
 
 ```
 index.html                       page markup (Desmos script in <head>, one ES-module entry point)
-OTCstyle.css                     'mission control' theme: CSS grid layout, glass panels, sticky 3-D plot, responsive
+OTCstyle.css                     'mission control' theme: CSS grid layout, glass panels sticky 3-D plot, responsive
 src/
   main.js                        entry point: DOM wiring only
   math/                          pure functions, no DOM  (unit-tested in Node)
