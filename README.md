@@ -5,8 +5,6 @@ Calculates and visualizes the orbital transfers from Astronautics: Hohmann, bi-e
 * Hohmann, bi-elliptic, common apse and apse-rotation run entirely in JavaScript.
 * Plane change runs a Python solver (`planechange/`) in the browser through [Pyodide](https://pyodide.org) (numpy only, loaded lazily the first time you pick that transfer).
 
-> **Status of plane change:** the solver is implemented and verified natively (Python 3.12 + numpy, see [Verification](#verification)). The Pyodide wiring and the Desmos arc plot have **not yet been exercised in a browser** — treat that path as experimental.
-
 ## Repository layout
 
 ```
@@ -33,7 +31,7 @@ tests/js, tests/py               58 Python + 12 JS tests
 scripts/                         bench_p_vs_lambert.py, validate_claims.py (reproduce every number below)
 ```
 
-## Plane change: problem statement
+## Two-Impulse Plane Change: problem statement
 
 Given two orbits (apoapsis/periapsis radii, inclination, RAAN, argument of periapsis), find the two-impulse transfer with minimum total Δv. A two-impulse transfer is fully described by
 
@@ -41,7 +39,7 @@ Given two orbits (apoapsis/periapsis radii, inclination, RAAN, argument of peria
 * ν₂ – true anomaly of the second burn on orbit 2,
 * the transfer conic through the two resulting points **r₁(ν₁), r₂(ν₂)**.
 
-For fixed r₁, r₂ the connecting conics form a **one-parameter family** (plus discrete choices: short/long way, number of revolutions). The question is how to label that one parameter. Lambert's problem labels it with the time of flight; there is a second natural label, the semi-latus rectum.
+For fixed r₁, r₂ the connecting conics form a **one-parameter family** (plus discrete choices: short/long way, number of revolutions). The question is how to label that one parameter. Lambert's problem labels it with the time of flight, which requires numerical optimization, but there is a second natural label, the semi-latus rectum.
 
 ---
 
@@ -61,7 +59,7 @@ Both describe the same set of conics, so the minimum Δv is the same; they diffe
 
 ### 2. Option A — constrain ΔT (what the original code did)
 
-The original design samples ΔT on a coarse grid, calls the Izzo solver, then refines. Things that fall out of the papers:
+The original design samples ΔT on a coarse grid, calls the Izzo solver, then refines. The takeaways from Izzo's paper are:
 
 * **Izzo's variables.** Lambert problems with the same c/s are "L-similar" (Gooding 1990); the solution depends on the geometry only through λ² = 1 − c/s, and the dimensionless time is T = √(2μ/s³)·Δt. Two landmarks are known in closed form (Izzo Eqs. 19, 21): the minimum-energy time T₀₀ = arccos λ + λ√(1−λ²) (x = 0) and the parabolic time T₁ = ⅔(1−λ³) (x = 1). Those, not a heuristic "1e-5 … outer period" window, are the natural scale for a ΔT grid.
 * **Mmax.** Izzo computes M_max from T (⌊T/π⌋, corrected with T_min(M) via Halley iteration). It is a property of the *requested* ΔT, so it cannot be used to *choose* the ΔT range without circularity (the concern in the old code comments). Separately, the user-facing "max revolutions" is just a cap passed to the solver (`lambert(..., max_revs=)`).
@@ -84,7 +82,7 @@ so **Δv(ν₁, ν₂, p) = |v₁ − v꜀₁| + |v꜀₂ − v₂| is an explic
 * **ΔT is monotonic in p** for a given way: decreasing for Δθ < π, increasing for Δθ > π (Blanco 2025, Fig. 4; checked numerically in `test_tof_monotonic_in_p`). So p ↔ ΔT is one-to-one per branch.
 * **Revolutions do not affect Δv.** An M-revolution solution is the *same conic* (same p, same velocities) with M extra periods of coasting. In a free-time search M is therefore irrelevant and `Mmax` never needs to be computed — one of the open questions in the old code comments disappears.
 * **Time of flight becomes an output.** `time_of_flight` evaluates it from Kepler's equation for elliptic, parabolic (Barker) and hyperbolic cases, optionally adding whole periods.
-* **Cost.** Per call, measured with `scripts/bench_p_vs_lambert.py` (best of 5 repeats × 2000 calls, CPython 3.12 / numpy 2.4, one sandbox CPU): Izzo `lambert()` ≈ 187 µs vs `velocities_from_p()` ≈ 40 µs (≈ 4.7×), or ≈ 54 µs (≈ 3.4×) if the time of flight is also evaluated. An earlier single-shot run gave ≈ 6×; that figure was noise-sensitive and should not be quoted. This is a per-call comparison on one geometry; **no end-to-end search comparison was measured** (the original ΔT-grid search never ran, so there is no baseline).
+* **Cost.** Per call, measured with `scripts/bench_p_vs_lambert.py` (best of 5 repeats × 2000 calls, CPython 3.12 / numpy 2.4, one sandbox CPU): Izzo `lambert()` ≈ 187 µs vs `velocities_from_p()` ≈ 40 µs (≈ 4.7×), or ≈ 54 µs (≈ 3.4×) if the time of flight is also evaluated. This is a per-call comparison on one geometry; **no end-to-end search comparison was measured** (the original ΔT-grid search never ran, so there is no baseline).
 * **A convenient inner problem.** For fixed (ν₁, ν₂), Δv(p) is smooth and, empirically, unimodal (no second interior local minimum in 300 random non-coplanar geometries I tried; not proven). For a circular start orbit the minimum is a root of a quartic (Blanco 2025, §4.3); `min_dv._best_p` just does a coarse sweep + golden section, so the 3-D problem collapses to a 2-D grid over (ν₁, ν₂) with a cheap inner minimization, followed by a 3-D Nelder–Mead polish (p is mapped from an open interval to ℝ so the simplex can never leave the valid range).
 
 ### 4. When ΔT really is a constraint

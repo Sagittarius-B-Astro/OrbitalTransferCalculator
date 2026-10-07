@@ -20,17 +20,24 @@ export function computeCommonApse({ r1a, r1p, r2a, r2p, A1, A2 }, muM3) {
 
   const h1 = Math.sqrt(mu * p1);
   const ht = Math.sqrt(mu * pt);
+  const h2 = Math.sqrt(mu * p2);
   const vp1 = h1 / rA;
   const vpt = ht / rA;
+  const vp2 = h2 / rB;
   const vr1 = (mu / h1) * e1 * Math.sin(TA1);
   const vrt = (mu / ht) * et * Math.sin(TA1);
+  const vr2 = (mu / h2) * e2 * Math.sin(TA2);
   const v1 = Math.hypot(vp1, vr1);
   const vt = Math.hypot(vpt, vrt);
+  const v2 = Math.hypot(vp2, vr2);
   const phi1 = Math.atan2(vr1, vp1);
   const phit = Math.atan2(vrt, vpt);
+  const phi2 = Math.atan2(vr2, vp2);
 
-  const totalDeltaV = Math.sqrt(v1 ** 2 + vt ** 2 - 2 * v1 * vt * Math.cos(phit - phi1));
+  const deltaV1 = Math.sqrt(v1 ** 2 + vt ** 2 - 2 * v1 * vt * Math.cos(phit - phi1));
+  const deltaV2 = Math.sqrt(v2 ** 2 + vt ** 2 - 2 * v2 * vt * Math.cos(phit - phi2));
+  const totalDeltaV = deltaV1 + deltaV2;
   const gamma = Math.atan2(vrt - vr1, vpt - vp1);
-  const transferTime = Math.PI * Math.sqrt(at ** 3 / mu); // NOTE: half a period; exact only for apse-to-apse arcs (see README)
+  const transferTime = Math.PI * Math.sqrt(at ** 3 / mu);
   return { totalDeltaV, gamma, transferTime };
 }

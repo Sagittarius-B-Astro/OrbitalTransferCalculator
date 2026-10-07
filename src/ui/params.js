@@ -38,7 +38,7 @@ export const TRANSFER_SCHEMAS = {
     fields: [...ORBIT_APSES, { key: 'A', id: 'eta', label: 'Apse Line Rotation (degrees)', group: 'Rotation' }],
   },
   planeChange: {
-    title: 'Minimum Delta V Plane Change Transfer Parameters',
+    title: 'Minimum Delta V Two-ImpulsePlane Change Transfer Parameters',
     fields: [
       ...ORBIT_APSES.slice(0, 2),
       { key: 'i1', id: 'i1', label: 'Initial Inclination (degrees)', group: 'Initial orbit' },
