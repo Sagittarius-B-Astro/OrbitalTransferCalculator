@@ -10,6 +10,8 @@ export function renderResults(r) {
   if (has('deltaV2')) html += `Δv₂: ${fmt(r.deltaV2)} km/s<br>`;
   if (has('deltaV3')) html += `Δv₃: ${fmt(r.deltaV3)} km/s<br>`;
   if (has('gamma')) html += `γ: ${fmt((r.gamma * 180) / Math.PI)}°<br>`;
+  if (has('gamma1')) html += `γ₁ (burn at A): ${fmt((r.gamma1 * 180) / Math.PI)}°<br>`;
+  if (has('gamma2')) html += `γ₂ (burn at B): ${fmt((r.gamma2 * 180) / Math.PI)}°<br>`; 
   if (has('nu1Deg')) html += `Impulse 1 true anomaly: ${fmt(r.nu1Deg, 2)}°<br>`;
   if (has('nu2Deg')) html += `Impulse 2 true anomaly: ${fmt(r.nu2Deg, 2)}°<br>`;
   if (has('p')) html += `Transfer semi-latus rectum: ${fmt(r.p, 1)} km<br>`;

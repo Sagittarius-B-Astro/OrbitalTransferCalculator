@@ -1,5 +1,12 @@
 import { M3_TO_KM3, deg2rad } from './common.js';
 
+const TWO_PI = 2 * Math.PI;
+const wrap = (x) => ((x % TWO_PI) + TWO_PI) % TWO_PI;
+function meanAnomaly(th, e) {   // signed e is fine, see above
+  const E = Math.atan2(Math.sqrt(1 - e * e) * Math.sin(th), e + Math.cos(th));
+  return E - e * Math.sin(E);
+}
+
 /** Elliptic transfer between coplanar orbits sharing an apse line (true anomalies A1, A2 in degrees). */
 export function computeCommonApse({ r1a, r1p, r2a, r2p, A1, A2 }, muM3) {
   const mu = muM3 * M3_TO_KM3;
@@ -16,28 +23,28 @@ export function computeCommonApse({ r1a, r1p, r2a, r2p, A1, A2 }, muM3) {
 
   const et = (rB - rA) / (rA * Math.cos(TA1) - rB * Math.cos(TA2));
   const pt = (rA * rB * (Math.cos(TA1) - Math.cos(TA2))) / (rA * Math.cos(TA1) - rB * Math.cos(TA2));
-  const at = pt / (1 - et ** 2);
+
+  if (!Number.isFinite(et) || Math.abs(et) >= 1)
+    return { error: 'The common-apse conic through A and B is not an ellipse (|e_t| >= 1). Choose different true anomalies.' };
+  const at = pt / (1 - et ** 2); 
 
   const h1 = Math.sqrt(mu * p1);
   const ht = Math.sqrt(mu * pt);
   const h2 = Math.sqrt(mu * p2);
   const vp1 = h1 / rA;
-  const vpt = ht / rA;
+  const vptA = ht / rA;
+  const vptB = ht / rB;
   const vp2 = h2 / rB;
   const vr1 = (mu / h1) * e1 * Math.sin(TA1);
-  const vrt = (mu / ht) * et * Math.sin(TA1);
+  const vrtA = (mu / ht) * et * Math.sin(TA1);
+  const vrtB = (mu / ht) * et * Math.sin(TA2);
   const vr2 = (mu / h2) * e2 * Math.sin(TA2);
-  const v1 = Math.hypot(vp1, vr1);
-  const vt = Math.hypot(vpt, vrt);
-  const v2 = Math.hypot(vp2, vr2);
-  const phi1 = Math.atan2(vr1, vp1);
-  const phit = Math.atan2(vrt, vpt);
-  const phi2 = Math.atan2(vr2, vp2);
 
-  const deltaV1 = Math.sqrt(v1 ** 2 + vt ** 2 - 2 * v1 * vt * Math.cos(phit - phi1));
-  const deltaV2 = Math.sqrt(v2 ** 2 + vt ** 2 - 2 * v2 * vt * Math.cos(phit - phi2));
+  const deltaV1 = Math.sqrt((vp1 - vptA) ** 2 + (vr1 - vrtA) ** 2);
+  const deltaV2 = Math.sqrt((vp2 - vptB) ** 2 + (vr2 - vrtB) ** 2);
   const totalDeltaV = deltaV1 + deltaV2;
-  const gamma = Math.atan2(vrt - vr1, vpt - vp1);
-  const transferTime = Math.PI * Math.sqrt(at ** 3 / mu);
-  return { totalDeltaV, gamma, transferTime };
+  const gamma1 = Math.atan2(vrtA - vr1, vptA - vp1);
+  const gamma2 = Math.atan2(vr2 - vrtB, vp2 - vptB);
+  const transferTime = Math.sqrt(at ** 3 / mu) * wrap(meanAnomaly(TA2, et) - meanAnomaly(TA1, et));
+  return { deltaV1, deltaV2, totalDeltaV, gamma1, gamma2, transferTime };
 }

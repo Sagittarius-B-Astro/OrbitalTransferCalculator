@@ -17,13 +17,12 @@ export function computeApseRotate({ r1a, r1p, r2a, r2p, A }, muM3) {
   const p1 = a1 * (1 - e1 ** 2);
   const p2 = a2 * (1 - e2 ** 2);
 
-  // a cos(th) + b sin(th) = c
   const a = e1 * p2 - e2 * p1 * Math.cos(eta);
   const b = -e2 * p1 * Math.sin(eta);
   const c = p1 - p2;
 
   const alpha = Math.atan2(b, a);
-  const arg = (c / a) * Math.cos(alpha); // = c / sqrt(a^2 + b^2)
+  const arg = (c / a) * Math.cos(alpha);
   if (Math.abs(arg) > 1) return { error: 'Orbits do not intersect for this apse rotation.' };
 
   const TA1 = (alpha - Math.acos(arg)) % (2 * Math.PI); // true anomaly on orbit 1 (second root: alpha + acos)

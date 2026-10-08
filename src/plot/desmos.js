@@ -79,9 +79,11 @@ const PLOTTERS = {
     expr(calc, 'pt', 'p_t=r_A r_B(\\cos(T_1)-\\cos(T_2))/(r_A\\cos(T_1)-r_B\\cos(T_2))');
     expr(calc, 'at', 'a_t=p_t/(1-e_t^2)');
     expr(calc, 'bt', 'b_t=a_t\\sqrt{1-e_t^2}');
+    const A2u = p.A2 > p.A1 ? p.A2 : p.A2 + 360;
+    expr(calc, 'TA2', `T_2=${A2u}\\pi/180`);
     curve(calc, 'initial_orbit', '(a_1(\\cos(t)-e_1),b_1\\sin(t),0)', BLUE, '0', '2 \\pi');
     curve(calc, 'target_orbit', '(a_2(\\cos(t)-e_2),b_2\\sin(t),0)', ORANGE, '0', '2 \\pi');
-    curve(calc, 'trajectory', '((p_t\\cos(t))/(1+e_t\\cos(t)),(p_t\\sin(t))/(1+e_t\\cos(t)),0)', GREEN, 'T_2', 'T_1');
+    curve(calc, 'trajectory', '((p_t\\cos(t))/(1+e_t\\cos(t)),(p_t\\sin(t))/(1+e_t\\cos(t)),0)', GREEN, 'T_1', 'T_2');
   },
 
   apseRotate(calc, p) {
