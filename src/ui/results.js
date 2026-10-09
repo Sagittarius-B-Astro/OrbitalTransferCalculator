@@ -16,5 +16,6 @@ export function renderResults(r) {
   if (has('nu2Deg')) html += `Impulse 2 true anomaly: ${fmt(r.nu2Deg, 2)}°<br>`;
   if (has('p')) html += `Transfer semi-latus rectum: ${fmt(r.p, 1)} km<br>`;
   if (has('transferTime')) html += `Transfer Time: ${fmt(r.transferTime / 3600)} hours<br>`;
+  if (r.method) html += `Search: ${r.method}<br>`;
   return html;
 }
