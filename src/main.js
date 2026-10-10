@@ -1,4 +1,4 @@
-import { computeCommonOrbitProperties, computeTransfer, M3_TO_KM3 } from './math/index.js';
+import { computeCommonOrbitProperties, computeTransfer } from './math/index.js';
 import { renderTypeParams, readTypeParams, hasMissing } from './ui/params.js';
 import { renderResults } from './ui/results.js';
 import { transferExpressions } from './plot/desmos.js';
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result) infoBox.innerHTML = renderResults(result);
     if (result?.minRadius < rad) infoBox.innerHTML += `<br>⚠ The transfer passes ${result.minRadius.toFixed(0)} km from the centre: inside the planet.`;
 
-    calculator.setBlank();   // clear the previous run (not verified against real Desmos 3D; fallback: track ids + removeExpressions)
+    calculator.setBlank(); 
     calculator.setExpression({ id: 'planet', latex: `x^2 + y^2 + z^2 = (${rad})^2`, color: '#88aaff' });
     transferExpressions(calculator, type, params, result);
   });

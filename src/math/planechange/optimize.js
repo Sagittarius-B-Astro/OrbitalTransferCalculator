@@ -1,50 +1,74 @@
-/**
- * Exact solver for the one place the (nu1, nu2, p) search is singular: burns at OPPOSITE ends of the line of
- * nodes (transfer angle = pi). There p = 2 r1 r2/(r1+r2) is fixed and the free parameters are
- *   q   = e sin(nu1)  (dimensionless radial velocity at r1)      -> delta-v is CONVEX in q
- *   phi = orientation of the transfer plane about the line of nodes (covers both senses of motion).
- *   v1 = sqrt(mu/p) q rhat1 + (sqrt(mu p)/r1) that(phi),   v2 = sqrt(mu/p) q rhat1 - (sqrt(mu p)/r2) that(phi)
- */
-import { TWO_PI, cross, dot, norm, scale, stateAt, anomalyOf } from './geometry.js';
-import { brentMin } from './optimize.js';
+/** Dependency-free 1-D and n-D minimisers. */
 
-export function nodalDirection(o1, o2) {
-  const c = cross(o1.n, o2.n), n = norm(c);
-  return n < 1e-12 ? null : scale(c, 1 / n);
-}
-
-const qMax = (r1n, r2n) => (2 * Math.sqrt(r1n * r2n)) / (r1n + r2n);
-
-function velocities(r1, r2n, mu, phi, q) {
-  const r1n = norm(r1), rh = scale(r1, 1 / r1n);
-  const helper = Math.abs(rh[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
-  let ea = cross(rh, helper); ea = scale(ea, 1 / norm(ea));
-  const eb = cross(rh, ea);
-  const that = [0, 1, 2].map((k) => Math.cos(phi) * ea[k] + Math.sin(phi) * eb[k]);
-  const p = (2 * r1n * r2n) / (r1n + r2n), vr = Math.sqrt(mu / p) * q;
-  const t1 = Math.sqrt(mu * p) / r1n, t2 = Math.sqrt(mu * p) / r2n;
-  return { p, v1: [0, 1, 2].map((k) => vr * rh[k] + t1 * that[k]), v2: [0, 1, 2].map((k) => vr * rh[k] - t2 * that[k]) };
-}
-
-export function minDeltaVNodal(o1, o2, mu, { nPhi = 72 } = {}) {
-  const d = nodalDirection(o1, o2);
-  if (!d) return null;
-  let best = null;
-  for (const s of [1, -1]) {
-    const nu1 = anomalyOf(o1, scale(d, s)), nu2 = anomalyOf(o2, scale(d, -s));
-    const [r1, vc1] = stateAt(o1, nu1, mu), [r2, vc2] = stateAt(o2, nu2, mu);
-    const r1n = norm(r1), r2n = norm(r2), qHi = qMax(r1n, r2n) * (1 - 1e-9);
-    const dv = (phi, q) => { const { v1, v2 } = velocities(r1, r2n, mu, phi, q);
-      return Math.hypot(v1[0] - vc1[0], v1[1] - vc1[1], v1[2] - vc1[2]) + Math.hypot(v2[0] - vc2[0], v2[1] - vc2[1], v2[2] - vc2[2]); };
-    const bestQ = (phi) => brentMin((q) => dv(phi, q), -10, qHi, 1e-12);        // convex in q
-    const h = TWO_PI / nPhi, vals = [];
-    for (let i = 0; i < nPhi; i++) vals.push(bestQ(i * h).fx);
-    const order = vals.map((v, i) => i).sort((i, j) => vals[i] - vals[j]).slice(0, 2);   // F(phi) can be multimodal
-    for (const i of order) {
-      const rp = brentMin((phi) => bestQ(phi).fx, i * h - h, i * h + h, 1e-11), q = bestQ(rp.x).x;
-      if (!best || rp.fx < best.dv) best = { dv: rp.fx, s, phi: rp.x, q, nu1, nu2, r1, r2, vc1, vc2 };
+/** Brent's minimiser (parabolic interpolation + golden section) on [ax, cx]. Returns { x, fx, evals }. */
+export function brentMin(f, ax, cx, tol = 1e-10, maxIter = 100) {
+  const CGOLD = 0.3819660112501051, ZEPS = 1e-12;
+  let a = Math.min(ax, cx), b = Math.max(ax, cx);
+  let x = a + CGOLD * (b - a), w = x, v = x;
+  let fx = f(x), fw = fx, fv = fx, d = 0, e = 0, evals = 1;
+  for (let it = 0; it < maxIter; it++) {
+    const xm = 0.5 * (a + b), tol1 = tol * Math.abs(x) + ZEPS, tol2 = 2 * tol1;
+    if (Math.abs(x - xm) <= tol2 - 0.5 * (b - a)) break;
+    let golden = true;
+    if (Math.abs(e) > tol1) {
+      let r = (x - w) * (fx - fv), q = (x - v) * (fx - fw), p = (x - v) * q - (x - w) * r;
+      q = 2 * (q - r);
+      if (q > 0) p = -p;
+      q = Math.abs(q);
+      const etemp = e;
+      e = d;
+      if (!(Math.abs(p) >= Math.abs(0.5 * q * etemp) || p <= q * (a - x) || p >= q * (b - x))) {
+        d = p / q;
+        const u = x + d;
+        if (u - a < tol2 || b - u < tol2) d = xm >= x ? tol1 : -tol1;
+        golden = false;
+      }
+    }
+    if (golden) {
+      e = x >= xm ? a - x : b - x;
+      d = CGOLD * e;
+    }
+    const u = Math.abs(d) >= tol1 ? x + d : x + (d >= 0 ? tol1 : -tol1);
+    const fu = f(u);
+    evals++;
+    if (fu <= fx) {
+      if (u >= x) a = x; else b = x;
+      v = w; w = x; x = u; fv = fw; fw = fx; fx = fu;
+    } else {
+      if (u < x) a = u; else b = u;
+      if (fu <= fw || w === x) { v = w; w = u; fv = fw; fw = fu; }
+      else if (fu <= fv || v === x || v === w) { v = u; fv = fu; }
     }
   }
-  const { v1, v2, p } = velocities(best.r1, norm(best.r2), mu, best.phi, best.q);
-  return { ...best, v1, v2, p, dtheta: Math.PI };
+  return { x, fx, evals };
+}
+
+/** n-D Nelder-Mead from a simplex of n+1 points. Returns { x, fx, iters }. */
+export function nelderMead(f, simplex, { xtol = 1e-9, ftol = 1e-12, maxIter = 600 } = {}) {
+  const n = simplex[0].length;
+  let pts = simplex.map((p) => p.slice());
+  let fs = pts.map(f);
+  const comb = (a, b, t) => a.map((ai, k) => ai + t * (b[k] - ai));   // a + t (b - a)
+  for (let it = 0; it < maxIter; it++) {
+    const idx = fs.map((_, i) => i).sort((i, j) => fs[i] - fs[j]);
+    pts = idx.map((i) => pts[i]);
+    fs = idx.map((i) => fs[i]);
+    let spread = 0;
+    for (let i = 1; i <= n; i++) for (let k = 0; k < n; k++) spread = Math.max(spread, Math.abs(pts[i][k] - pts[0][k]));
+    if (Math.abs(fs[n] - fs[0]) <= ftol && spread <= xtol) return { x: pts[0], fx: fs[0], iters: it };
+    const c = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) c[k] += pts[i][k] / n;
+    const xr = comb(c, pts[n], -1), fr = f(xr);          // reflect
+    if (fr >= fs[0] && fr < fs[n - 1]) { pts[n] = xr; fs[n] = fr; continue; }
+    if (fr < fs[0]) {                                     // expand
+      const xe = comb(c, pts[n], -2), fe = f(xe);
+      if (fe < fr) { pts[n] = xe; fs[n] = fe; } else { pts[n] = xr; fs[n] = fr; }
+      continue;
+    }
+    const outside = fr < fs[n];                           // contract
+    const xc = outside ? comb(c, pts[n], -0.5) : comb(c, pts[n], 0.5), fc = f(xc);
+    if (outside ? fc <= fr : fc < fs[n]) { pts[n] = xc; fs[n] = fc; continue; }
+    for (let i = 1; i <= n; i++) { pts[i] = comb(pts[0], pts[i], 0.5); fs[i] = f(pts[i]); }   // shrink
+  }
+  return { x: pts[0], fx: fs[0], iters: maxIter };
 }

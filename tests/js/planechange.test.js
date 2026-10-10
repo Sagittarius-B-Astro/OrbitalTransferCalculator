@@ -5,7 +5,7 @@ import { computePlaneChange } from '../../src/math/planechange/index.js';
 import { orbitFromDegrees, stateAt, dot, cross } from '../../src/math/planechange/geometry.js';
 import { makeCell, cellMin, bestPForWay } from '../../src/math/planechange/pFamily.js';
 import { brentMin, nelderMead } from '../../src/math/planechange/optimize.js';
-import { timeOfFlight, minRadiusOnArc } from '../../src/math/planechange/kepler.js';
+import { timeOfFlight, minRadiusOnArc } from '../../src/math/planechange/index.js';
 import { globalSearch } from '../../src/math/planechange/search.js';
 
 const ref = JSON.parse(fs.readFileSync(new URL('./fixtures/planechange_reference.json', import.meta.url)));

@@ -53,12 +53,11 @@ test('bi-elliptic with ri = r2 degenerates to Hohmann', () => {
   assert.ok(b.transferTime > h.transferTime);
 });
 
-test('common apse: circular orbits at apse-to-apse reproduce the first Hohmann burn', () => {
-  // NOTE: totalDeltaV here is the burn at point A only (documented in README, known issue #3)
+test('common apse: circular apse-to-apse reproduces BOTH Hohmann burns and the half-period time', () => {
   const ref = hohmannRef(7000, 21000);
   const r = computeCommonApse({ r1a: 7000, r1p: 7000, r2a: 21000, r2p: 21000, A1: 0, A2: 180 }, MU_EARTH_M3);
-  close(r.totalDeltaV, ref.dv1, 1e-9);
-  close(r.transferTime, ref.t, 1e-9);
+  close(r.deltaV1, ref.dv1);  close(r.deltaV2, ref.dv2);
+  close(r.totalDeltaV, ref.dv1 + ref.dv2);  close(r.transferTime, ref.t);
 });
 
 test('apse rotation: returned point lies on BOTH ellipses', () => {

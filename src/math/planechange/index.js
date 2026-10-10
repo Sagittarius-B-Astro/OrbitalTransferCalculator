@@ -1,41 +1,50 @@
-/** Small 3-vector helpers and Keplerian orbit geometry (km, s, rad). */
-export const TWO_PI = 2 * Math.PI;
-const DEG = Math.PI / 180;
+import { M3_TO_KM3 } from '../common.js';
+import { TWO_PI, norm, cross, sub, orbitFromDegrees } from './geometry.js';
+import { makeCell, cellMin, velocitiesOfP, wayAngle } from './pFamily.js';
+import { globalSearch } from './search.js';
+import { minDeltaVNodal } from './nodal.js';
+import { timeOfFlight, conicForPlot, minRadiusOnArc } from './kepler.js';
 
-export const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-export const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-export const norm = (a) => Math.hypot(a[0], a[1], a[2]);
-export const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-export const scale = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
-export const mod2pi = (x) => ((x % TWO_PI) + TWO_PI) % TWO_PI;
+const deg = (x) => (x * 180) / Math.PI;
 
-/** Orbit from apoapsis/periapsis radii and orientation angles in RADIANS. P, Q = perifocal axes in the inertial frame, n = normal. */
-export function makeOrbit({ ra, rp, inc = 0, raan = 0, argp = 0 }) {
-  const a = (ra + rp) / 2;
-  const e = (ra - rp) / (ra + rp);
-  const p = a * (1 - e * e);
-  const cO = Math.cos(raan), sO = Math.sin(raan), ci = Math.cos(inc), si = Math.sin(inc), cw = Math.cos(argp), sw = Math.sin(argp);
-  // first two columns of Rz(RAAN) Rx(i) Rz(w)
-  const P = [cO * cw - sO * sw * ci, sO * cw + cO * sw * ci, sw * si];
-  const Q = [-cO * sw - sO * cw * ci, -sO * sw + cO * cw * ci, cw * si];
-  return { ra, rp, a, e, p, P, Q, n: cross(P, Q) };
+function describe(method, c, mu) {
+  const dv1 = norm(sub(c.v1, c.vc1)), dv2 = norm(sub(c.vc2, c.v2));
+  const conic = conicForPlot(c.r1, c.v1, c.r2, mu);
+  const e = conic.e;
+  return {
+    method, totalDeltaV: dv1 + dv2, deltaV1: dv1, deltaV2: dv2,
+    transferTime: timeOfFlight(c.p, c.dtheta, c.r1, c.v1, mu),
+    nu1Deg: deg(c.nu1) % 360, nu2Deg: deg(c.nu2) % 360,
+    p: c.p, e, a: Math.abs(e - 1) > 1e-9 ? c.p / (1 - e * e) : null,
+    transferPeriapsis: c.p / (1 + e), minRadius: minRadiusOnArc(conic), conic,
+  };
 }
 
-export const orbitFromDegrees = (ra, rp, iDeg, raanDeg, wDeg) =>
-  makeOrbit({ ra, rp, inc: iDeg * DEG, raan: raanDeg * DEG, argp: wDeg * DEG });
+/**
+ * Best two-impulse transfer between two orbits (free time of flight).
+ * params: r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2  (km, degrees); muM3 in m^3/s^2 like the other solvers.
+ */
+export function computePlaneChange(params, muM3, { nGrid = 72 } = {}) {
+  for (const k of ['1', '2']) {
+    const ra = params[`r${k}a`], rp = params[`r${k}p`];
+    if (!(rp > 0) || !(ra >= rp)) return { error: `Orbit ${k}: apoapsis radius must be >= periapsis radius, and both positive.` };
+  }
+  const mu = muM3 * M3_TO_KM3;
+  const o1 = orbitFromDegrees(params.r1a, params.r1p, params.i1, params.RAAN1, params.w1);
+  const o2 = orbitFromDegrees(params.r2a, params.r2p, params.i2, params.RAAN2, params.w2);
 
-/** Inertial [position, velocity] on `o` at true anomaly `nu`. */
-export function stateAt(o, nu, mu) {
-  const c = Math.cos(nu), s = Math.sin(nu);
-  const r = o.p / (1 + o.e * c);
-  const k = Math.sqrt(mu / o.p);
-  const rx = r * c, ry = r * s, vx = -k * s, vy = k * (o.e + c);
-  const { P, Q } = o;
-  return [
-    [rx * P[0] + ry * Q[0], rx * P[1] + ry * Q[1], rx * P[2] + ry * Q[2]],
-    [vx * P[0] + vy * Q[0], vx * P[1] + vy * Q[1], vx * P[2] + vy * Q[2]],
-  ];
+  const g = globalSearch(o1, o2, mu, { nGrid });
+  const cell = makeCell(o1, o2, g.best.nu1, g.best.nu2, mu), pick = cellMin(cell);
+  const [v1, v2] = velocitiesOfP(cell, pick.way, pick.p);
+  let result = describe('general', { v1, v2, vc1: cell.vc1, vc2: cell.vc2, r1: cell.r1, r2: cell.r2, p: pick.p,
+                                     dtheta: wayAngle(cell, pick.way), nu1: g.best.nu1, nu2: g.best.nu2 }, mu);
+
+  if (norm(cross(o1.n, o2.n)) > 1e-6) {                       // planes differ -> exact nodal-slice candidate
+    const n = minDeltaVNodal(o1, o2, mu);
+    if (n && n.dv < result.totalDeltaV) result = describe('nodal', n, mu);
+  }
+  result.basins = g.basins.map((b) => ({ nu1Deg: deg(b.nu1), nu2Deg: deg(b.nu2), deltaV: b.dv }));
+  return result;
 }
 
-/** True anomaly at which `o` crosses the in-plane direction u. */
-export const anomalyOf = (o, u) => Math.atan2(dot(u, o.Q), dot(u, o.P));
+export { globalSearch, minDeltaVNodal };

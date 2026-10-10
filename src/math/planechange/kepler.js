@@ -1,50 +1,43 @@
-import { M3_TO_KM3 } from '../common.js';
-import { TWO_PI, norm, cross, sub, orbitFromDegrees } from './geometry.js';
-import { makeCell, cellMin, velocitiesOfP, wayAngle } from './pFamily.js';
-import { globalSearch } from './search.js';
-import { minDeltaVNodal } from './nodal.js';
-import { timeOfFlight, conicForPlot, minRadiusOnArc } from './kepler.js';
+import { TWO_PI, dot, cross, norm } from './geometry.js';
 
-const deg = (x) => (x * 180) / Math.PI;
-
-function describe(method, c, mu) {
-  const dv1 = norm(sub(c.v1, c.vc1)), dv2 = norm(sub(c.vc2, c.v2));
-  const conic = conicForPlot(c.r1, c.v1, c.r2, mu);
-  const e = conic.e;
-  return {
-    method, totalDeltaV: dv1 + dv2, deltaV1: dv1, deltaV2: dv2,
-    transferTime: timeOfFlight(c.p, c.dtheta, c.r1, c.v1, mu),
-    nu1Deg: deg(c.nu1) % 360, nu2Deg: deg(c.nu2) % 360,
-    p: c.p, e, a: Math.abs(e - 1) > 1e-9 ? c.p / (1 - e * e) : null,
-    transferPeriapsis: c.p / (1 + e), minRadius: minRadiusOnArc(conic), conic,
-  };
+/** Time of flight on the conic of semi-latus rectum p from r1 (velocity v1) through transfer angle dtheta. */
+export function timeOfFlight(p, dtheta, r1, v1, mu) {
+  const r1n = norm(r1), h = Math.sqrt(mu * p), vr1 = dot(r1, v1) / r1n;
+  const ecos = p / r1n - 1, esin = (vr1 * h) / mu, e = Math.hypot(ecos, esin);
+  const nu1 = Math.atan2(esin, ecos), nu2 = nu1 + dtheta;
+  if (Math.abs(e - 1) < 1e-9) {                                   // parabola (Barker)
+    const D = (nu) => Math.tan(nu / 2);
+    const B = (nu) => D(nu) + D(nu) ** 3 / 3;
+    return 0.5 * Math.sqrt(p ** 3 / mu) * (B(nu2) - B(nu1));
+  }
+  if (e < 1) {
+    const a = p / (1 - e * e), n = Math.sqrt(mu / a ** 3);
+    const M = (nu) => { const E = Math.atan2(Math.sqrt(1 - e * e) * Math.sin(nu), e + Math.cos(nu)); return E - e * Math.sin(E); };
+    return (((M(nu2) - M(nu1)) % TWO_PI) + TWO_PI) % TWO_PI / n;
+  }
+  const a = p / (1 - e * e), n = Math.sqrt(mu / (-a) ** 3);
+  const H = (nu) => 2 * Math.atanh(Math.sqrt((e - 1) / (e + 1)) * Math.tan(nu / 2));
+  const N = (nu) => e * Math.sinh(H(nu)) - H(nu);
+  return (N(nu2) - N(nu1)) / n;
 }
 
-/**
- * Best two-impulse transfer between two orbits (free time of flight).
- * params: r1a, r1p, i1, RAAN1, w1, r2a, r2p, i2, RAAN2, w2  (km, degrees); muM3 in m^3/s^2 like the other solvers.
- */
-export function computePlaneChange(params, muM3, { nGrid = 72 } = {}) {
-  for (const k of ['1', '2']) {
-    const ra = params[`r${k}a`], rp = params[`r${k}p`];
-    if (!(rp > 0) || !(ra >= rp)) return { error: `Orbit ${k}: apoapsis radius must be >= periapsis radius, and both positive.` };
-  }
-  const mu = muM3 * M3_TO_KM3;
-  const o1 = orbitFromDegrees(params.r1a, params.r1p, params.i1, params.RAAN1, params.w1);
-  const o2 = orbitFromDegrees(params.r2a, params.r2p, params.i2, params.RAAN2, params.w2);
-
-  const g = globalSearch(o1, o2, mu, { nGrid });
-  const cell = makeCell(o1, o2, g.best.nu1, g.best.nu2, mu), pick = cellMin(cell);
-  const [v1, v2] = velocitiesOfP(cell, pick.way, pick.p);
-  let result = describe('general', { v1, v2, vc1: cell.vc1, vc2: cell.vc2, r1: cell.r1, r2: cell.r2, p: pick.p,
-                                     dtheta: wayAngle(cell, pick.way), nu1: g.best.nu1, nu2: g.best.nu2 }, mu);
-
-  if (norm(cross(o1.n, o2.n)) > 1e-6) {                       // planes differ -> exact nodal-slice candidate
-    const n = minDeltaVNodal(o1, o2, mu);
-    if (n && n.dv < result.totalDeltaV) result = describe('nodal', n, mu);
-  }
-  result.basins = g.basins.map((b) => ({ nu1Deg: deg(b.nu1), nu2Deg: deg(b.nu2), deltaV: b.dv }));
-  return result;
+/** Closed-form description of the arc: r(nu) = p/(1+e cos nu) (cos nu P + sin nu Q), nu in [nuStart, nuEnd]. */
+export function conicForPlot(r1, v1, r2, mu) {
+  const h = cross(r1, v1), hn = norm(h), hh = h.map((x) => x / hn);
+  const vxh = cross(v1, h), r1n = norm(r1);
+  const evec = [vxh[0] / mu - r1[0] / r1n, vxh[1] / mu - r1[1] / r1n, vxh[2] / mu - r1[2] / r1n];
+  const e = norm(evec);
+  const P = e > 1e-9 ? evec.map((x) => x / e) : r1.map((x) => x / r1n);   // circular: periapsis direction arbitrary
+  const Q = cross(hh, P);
+  const nuStart = Math.atan2(dot(r1, Q), dot(r1, P));
+  const dth = ((Math.atan2(dot(cross(r1, r2), hh), dot(r1, r2)) % TWO_PI) + TWO_PI) % TWO_PI;
+  return { p: (hn * hn) / mu, e, P, Q, nuStart, nuEnd: nuStart + dth };
 }
 
-export { globalSearch, minDeltaVNodal };
+/** Smallest distance from the planet's centre ON THE TRAVELLED ARC (not the whole conic). */
+export function minRadiusOnArc(c) {
+  const r = (nu) => c.p / (1 + c.e * Math.cos(nu));
+  const k = Math.ceil(c.nuStart / TWO_PI);
+  if (k * TWO_PI <= c.nuEnd) return c.p / (1 + c.e);
+  return Math.min(r(c.nuStart), r(c.nuEnd));
+}
