@@ -33,6 +33,8 @@ export function loadPlaneChange() {
   return pyPromise;
 }
 
+export const pythonRequested = () => pyPromise !== null;
+
 /** params: km, degrees, mu in km^3/s^2. Returns plain JSON from planechange.main.solve. */
 export async function runPlaneChange(params) {
   const py = await loadPlaneChange();

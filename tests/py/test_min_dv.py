@@ -49,5 +49,5 @@ def test_result_is_a_local_minimum():
 
 def test_main_solve_json_contract():
     out = solve(dict(r1a=7000, r1p=7000, i1=0, RAAN1=0, w1=0, r2a=14000, r2p=14000, i2=20, RAAN2=0, w2=0, mu=MU, n_grid=10))
-    assert {"totalDeltaV", "transferTime", "nu1Deg", "nu2Deg", "p", "a", "e", "arc"} <= out.keys()
-    assert len(out["arc"]) == 81 and np.linalg.norm(out["arc"][-1]) == pytest.approx(14000, rel=1e-5)
+    assert {"totalDeltaV", "transferTime", "nu1Deg", "nu2Deg", "p", "a", "e", "conic"} <= out.keys()
+    c = out["conic"]; assert c["nuEnd"] > c["nuStart"] and c["p"] == pytest.approx(out["p"], rel=1e-9)

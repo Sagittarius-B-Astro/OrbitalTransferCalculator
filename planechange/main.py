@@ -9,6 +9,24 @@ from .kepler import propagate
 from .min_dv import min_delta_v
 from .nodal import min_delta_v_nodal
 
+def conic_for_plot(r1, v1, r2, mu):
+    h = np.cross(r1, v1); hn = np.linalg.norm(h); hh = h / hn
+    evec = np.cross(v1, h) / mu - r1 / np.linalg.norm(r1)
+    e = np.linalg.norm(evec)
+    P = evec / e if e > 1e-9 else r1 / np.linalg.norm(r1)   # circular: periapsis direction arbitrary
+    Q = np.cross(hh, P)
+    nu1 = np.arctan2(r1 @ Q, r1 @ P)
+    dth = np.arctan2(np.cross(r1, r2) @ hh, r1 @ r2) % (2 * np.pi)
+    return dict(p=float(hn**2 / mu), e=float(e), P=P.tolist(), Q=Q.tolist(),
+                nuStart=float(nu1), nuEnd=float(nu1 + dth))
+
+def min_radius_on_arc(c):
+    two_pi = 2 * np.pi
+    k = np.ceil(c["nuStart"] / two_pi)                 # first periapsis passage at/after the start
+    if k * two_pi <= c["nuEnd"]:
+        return c["p"] / (1 + c["e"])
+    r = lambda nu: c["p"] / (1 + c["e"] * np.cos(nu))
+    return min(r(c["nuStart"]), r(c["nuEnd"]))
 
 def solve(params):
     d = np.radians
@@ -24,15 +42,12 @@ def solve(params):
     a = res.get("a")
     if a is None:
         a = res["p"] / (1 - res["e"] ** 2) if abs(res["e"] - 1) > 1e-9 else None
-    r1, _ = state_at(o1, res["nu1"], params["mu"])
-    n_arc = 80
-    arc = []
-    for k in range(n_arc + 1):
-        r, _ = propagate(r1, res["v1"], res["tof"] * k / n_arc, params["mu"])
-        arc.append([float(x) for x in r])
+    r1, _ = state_at(o1, res["nu1"], mu)
+    r2, _ = state_at(o2, res["nu2"], mu)
+    conic = conic_for_plot(r1, res["v1"], r2, mu)
     return {
         "totalDeltaV": float(res["dv"]), "transferTime": float(res["tof"]),
         "nu1Deg": float(np.degrees(res["nu1"])), "nu2Deg": float(np.degrees(res["nu2"])),
         "p": float(res["p"]), "a": None if a is None else float(a), "e": float(res["e"]),
-        "arc": arc, "transferPeriapsis": float(res["p"] / (1 + res["e"])), "method": res["method"],
+        "conic": conic, "minRadius": min_radius_on_arc(conic), "method": res["method"],
     }

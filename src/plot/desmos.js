@@ -5,6 +5,8 @@ const BLUE = '#00ccff';
 const ORANGE = '#ff6600';
 const GREEN = '#00ff88';
 
+const num = (x) => (Math.abs(x) < 1e-12 ? '0' : x.toFixed(12));
+
 function setBounds(calc, r) {
   const b = 1.1 * r;
   calc.setMathBounds({ xmin: -b, xmax: b, ymin: -b, ymax: b, zmin: -b, zmax: b });
@@ -102,7 +104,6 @@ const PLOTTERS = {
     );
   },
 
-  /** Plane change: both orbits are drawn from numeric rotation matrices; the arc comes from Python. */
   planeChange(calc, p, result) {
     setBounds(calc, Math.max(p.r1a, p.r2a));
     const draw = (id, ra, rp, inc, raan, w, color) => {
@@ -114,15 +115,17 @@ const PLOTTERS = {
       const q11 = cO * cw - sO * sw * ci, q12 = -cO * sw - sO * cw * ci;
       const q21 = sO * cw + cO * sw * ci, q22 = -sO * sw + cO * cw * ci;
       const q31 = sw * si, q32 = cw * si;
-      const X = `${a}(\\cos(t)-${e})`;
-      const Y = `${b}\\sin(t)`;
-      curve(calc, id, `(${q11}(${X})+${q12}(${Y}),${q21}(${X})+${q22}(${Y}),${q31}(${X})+${q32}(${Y}))`, color, '0', '2 \\pi');
+      const X = `${num(a)}(\\cos(t)-${num(e)})`;
+      const Y = `${num(b)}\\sin(t)`;
+      curve(calc, id, `(${num(q11)}(${X})+(${num(q12)})(${Y}),${num(q21)}(${X})+(${num(q22)})(${Y}),${num(q31)}(${X})+(${num(q32)})(${Y}))`, color, '0', '2 \\pi');
     };
     draw('initial_orbit', p.r1a, p.r1p, p.i1, p.RAAN1, p.w1, BLUE);
     draw('target_orbit', p.r2a, p.r2p, p.i2, p.RAAN2, p.w2, ORANGE);
-    if (result && result.arc) {
-      const col = (k) => `[${result.arc.map((pt) => pt[k]).join(',')}]`;
-      expr(calc, 'transfer_arc', `(${col(0)},${col(1)},${col(2)})`, { color: GREEN });
+    if (result && result.conic) {
+      const c = result.conic, n = (x) => `(${num(x)})`;
+      const R = `\\frac{${num(c.p)}}{1+${num(c.e)}\\cos(t)}`;
+      const comp = (k) => `${R}\\left(${n(c.P[k])}\\cos(t)+${n(c.Q[k])}\\sin(t)\\right)`;
+      curve(calc, 'transfer_arc', `(${comp(0)},${comp(1)},${comp(2)})`, GREEN, n(c.nuStart), n(c.nuEnd));
     }
   },
 };
