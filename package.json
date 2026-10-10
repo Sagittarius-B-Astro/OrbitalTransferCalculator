@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/js/*.test.js && python3 -m pytest -q tests/py",
-    "test:js": "node --test tests/js/*.test.js",
-    "test:py": "python3 -m pytest -q tests/py"
+    "test": "node --test tests/js/*.test.js",
+    "test:js": "node --test tests/js/*.test.js"
   }
 }

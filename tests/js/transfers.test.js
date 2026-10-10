@@ -82,4 +82,4 @@ test('apse rotation: zero rotation of identical orbits needs no delta-v', () => 
 test('computeTransfer dispatch: planeChange is solved natively', () => {
   const pc = { r1a: 7000, r1p: 7000, i1: 0, RAAN1: 0, w1: 0, r2a: 14000, r2p: 14000, i2: 20, RAAN2: 0, w2: 0 };
   assert.ok(Math.abs(computeTransfer('planeChange', pc, MU_EARTH_M3).totalDeltaV - 2.957) < 1e-3);
-}
+});
